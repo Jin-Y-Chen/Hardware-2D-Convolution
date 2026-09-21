@@ -3,7 +3,7 @@ AI Usage Log
 [GPT-5.6 Luna] 
 
 Date: 9/20, once upon good evening
-
+-
 Q: what does WIDTH mean in the context of a TUSER parameter? 
 
 R: "number of bits used to represent each individual numerical value"
@@ -12,8 +12,7 @@ T: WIDTH define the bit length of integer type
 
 F: no floating-point? 
 
-Data: 9/20
-
+-
 Q: what's a recommend project folder structure with emphasizes on automation with script
 
 
