@@ -12,6 +12,7 @@ T: WIDTH define the bit length of integer type
 
 F: no floating-point? 
 
+[Cursor Grok-4.6] 
 -
 Q: what's a recommend project folder structure with emphasizes on automation with script
 
