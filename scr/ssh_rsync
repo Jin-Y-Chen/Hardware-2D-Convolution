@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# =========================
+# User configuration
+# =========================
+
+REMOTE_USER="jinchen"
+
+REMOTE_HOST="eceap1.ece.stonybrook.edu"
+JUMP_HOST="lab40.ece.stonybrook.edu"
+
+REMOTE_PROJECT="~/myproject"
+
+# =========================
+# Project paths
+# =========================
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOCAL_RTL="$PROJECT_ROOT/rtl/"
+
+# =========================
+# Temporary SSH configuration
+# =========================
+
+SSH_CONFIG="$(mktemp)"
+
+trap 'rm -f "$SSH_CONFIG"' EXIT
+
+cat > "$SSH_CONFIG" <<EOF
+Host lab40
+    HostName $JUMP_HOST
+    User $REMOTE_USER
+
+Host eceap1
+    HostName $REMOTE_HOST
+    User $REMOTE_USER
+    ProxyJump lab40
+EOF
+
+# =========================
+# Sync
+# =========================
+
+echo "Syncing RTL..."
+echo "Local : $LOCAL_RTL"
+echo "Remote: $REMOTE_USER@$REMOTE_HOST:$REMOTE_PROJECT/rtl/"
+echo
+
+ssh -F "$SSH_CONFIG" eceap1 \
+    "mkdir -p $REMOTE_PROJECT/rtl"
+
+rsync -avz \
+    --delete \
+    -e "ssh -F $SSH_CONFIG" \
+    "$LOCAL_RTL" \
+    "eceap1:$REMOTE_PROJECT/rtl/"
+
+echo
+echo "Sync complete."
