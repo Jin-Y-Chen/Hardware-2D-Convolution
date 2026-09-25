@@ -1,34 +1,58 @@
 AI Usage Log
 
-Date: 9/20, once upon good evening
--
-Q: what does WIDTH mean in the context of a TUSER parameter? 
-
-[GPT-5.6 Luna] 
-R: "number of bits used to represent each individual numerical value"
-
--
-Q: what's a recommend project folder structure with emphasizes on automation with script
-    *ASK for folder name, convention, and structure
-
-[Cursor Grok-4.6] 
-R: *Large graphical structure, A seperate folder for testbench, each step of the design process(sim, syn), input, and output folder
+Scripts and Automation is generated with AI
 
 Date: 9/20, once upon good evening
--
-Q: how to sign extend in verilog 
+    --------------------------------------------------
+    Q: what does WIDTH mean in the context of a TUSER parameter? 
 
-[Cursor Grok-4.6] 
-R: if both sides are signed. A <= B automatic sign-extends. No build in unextend, usedsplicing
+    [GPT-5.6 Luna] 
+    R: "number of bits used to represent each individual numerical value"
 
-Q: how to add package in verilog
+    --------------------------------------------------
+    Q: what's a recommend project folder structure with emphasizes on automation with script?
+        *ASK for folder name, convention, and structure
 
-[Cursor Grok-4.6] 
-R: // rtl/conv_pkg.sv
-package conv_pkg;
-    parameter int WIDTH = 16;
-    parameter int ACCW  = 48;
+    [Cursor Grok-4.6] 
+    R: *Large graphical structure, A seperate folder for testbench, each step of the design process(sim, syn), input, and output folder
 
-    typedef logic signed [WIDTH-1:0] data_t;
-    typedef logic signed [ACCW-1:0]  acc_t;
-endpackage
+Date: 9/25, earbubs inside headphones(no music)
+    --------------------------------------------------
+    Q: how to sign extend in verilog?
+
+    [Cursor Grok-4.6] 
+    R: if both sides are signed. A <= B automatic sign-extends. No build in unextend, usedsplicing
+
+    ---------------------------------------------------
+    Q: how to add package in verilog
+
+    [Cursor Grok-4.6] 
+    R: // rtl/conv_pkg.sv
+    package conv_pkg;
+        parameter int WIDTH = 16;
+        parameter int ACCW  = 48;
+
+        typedef logic signed [WIDTH-1:0] data_t;
+        typedef logic signed [ACCW-1:0]  acc_t;
+    endpackage
+
+    import conv_pkg::*;          // whole package
+
+    module mac (
+        input  data_t input0,
+        ...
+    );
+        acc_t acc;
+    endmodule
+
+    ---------------------------------------------------
+    Q: what is the differences between localparam and param module header?
+
+    R: parameter is input to the module, localparam can not be override
+
+    ---------------------------------------------------
+    Q: Warning Incorrect size constant for integer literal
+
+    R: use reg signed [ACCW-1:0] acc = 0; instead of reg signed [ACCW-1:0] acc = 0'b0;
+
+    R: quant is declared and initalized inside always_comb. lifetime is not specified, so the tool refuses the implicit default. Declare it in the main body or don't initalize
