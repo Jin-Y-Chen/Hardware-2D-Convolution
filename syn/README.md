@@ -1,0 +1,1 @@
+stores generated netlist and other synthesis result
