@@ -30,8 +30,14 @@ echo
 ssh "$REMOTE_USER@$REMOTE_HOST" \
     "mkdir -p $REMOTE_PROJECT/rtl"
 
-# Synchronize RTL
+# Sync RTL sources. --delete drops remote files that left local rtl/.
+# Keep Questa work/ (and other generated sim files); vlog rebuilds what it needs.
 rsync -avz --delete \
+    --exclude 'work/' \
+    --exclude '*.wlf' \
+    --exclude 'transcript' \
+    --exclude 'modelsim.ini' \
+    --exclude 'vsim.dbg' \
     "$LOCAL_RTL" \
     "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PROJECT/rtl/"
 
