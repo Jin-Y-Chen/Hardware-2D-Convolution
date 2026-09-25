@@ -1,53 +1,35 @@
-scripts that facilitate, manage, and run directory and file navigation
+## Prerequisites
 
-Remote Development Workflow
+### Local WSL / Linux
 
-Prerequisites
+The local development environment requires:
 
-Local Windows
+* Git
+* OpenSSH (`ssh`)
+* `rsync`
+* Bash
 
-- Git Bash or WSL
-- OpenSSH (`ssh`)
-- rsync
+On Ubuntu/WSL, install the required packages with:
 
-Verify:
-
-```
-ssh -V
-rsync --version
-```
-
-If using WSL:
-
-```
+```bash
 sudo apt update
-sudo apt install rsync
+sudo apt install git openssh-client rsync
 ```
 
-Remote Server
+### Remote Server
 
-- SSH access to eceap1
-- rsync installed
-- Required simulation/emulation tools
-- Required synthesis tools
+The remote server requires:
 
-Verify SSH:
+* SSH access to `eceap1`
+* `rsync` installed
+* Required simulation/emulation tools
+* Required synthesis tools
 
-```
-ssh eceap1
-```
+### SSH Configuration
 
-Verify remote rsync:
+Add the following to `~/.ssh/config`. Do not put a password in this repository or in any script.
 
-```
-ssh eceap1 'rsync --version'
-```
-
-SSH Configuration
-
-Add the following to `~/.ssh/config`. Do not put a password in this repo or in any script.
-
-```
+```sshconfig
 Host eceap1
     HostName eceap1.ece.stonybrook.edu
     User jinchen
@@ -59,93 +41,96 @@ Host eceap1
     ControlPersist 4h
 ```
 
-One-time key setup (Git Bash or WSL):
+### SSH Key Setup
 
-```
+If an SSH key has not already been created:
+
+```bash
 ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_sbu
 ssh-copy-id -i ~/.ssh/id_ed25519_sbu.pub eceap1
 ```
 
-Load the key once per login:
+Load the key into the SSH agent:
 
-```
+```bash
 eval "$(ssh-agent -s)"
 ssh-add ~/.ssh/id_ed25519_sbu
 ```
 
-Test:
+## Functional Example
 
-```
-ssh eceap1
-```
+From the repository root, make the scripts executable and load the environment:
 
-Setup
-
-From the repository root:
-
-```
+```bash
 chmod +x scr/ssh_rsync scr/remote_sim scr/remote_syn
 sed -i 's/\r$//' scr/ssh_rsync scr/env.sh
-```
 
-Command aliases
-
-Short names map straight to files in `scr/`. There is no dispatcher.
-
-| Alias | Script |
-|---|---|
-| `sync` | `scr/ssh_rsync` — copy `rtl/` to eceap1 |
-| `sim` | `scr/remote_sim` |
-| `syn` | `scr/remote_syn` |
-
-**Git Bash / WSL** (once per session, or add to `~/.bashrc`):
-
-```
 source scr/env.sh
+```
+
+The repository is organized so that RTL is developed locally and simulation/synthesis are performed remotely:
+
+```text
+repository/
+├── rtl/
+│   └── ...
+└── scr/
+    ├── env.sh
+    ├── ssh_rsync
+    ├── remote_sim
+    └── remote_syn
+```
+
+After modifying the RTL under `rtl/`, synchronize it to the remote server:
+
+```bash
 sync
 ```
 
-**Windows CMD** (once per session):
+Run the remote simulation:
 
-```
-scr\aliases.cmd
-sync
-```
-
-Without aliases you can still run the scripts by path: `./scr/ssh_rsync`.
-
-Workflow
-
-Edit RTL locally:
-
-```
-rtl/
-```
-
-Sync, then remote sim / synth:
-
-```
-source scr/env.sh
-sync
+```bash
 sim
+```
+
+Run synthesis:
+
+```bash
 syn
 ```
 
-Workflow Summary
+A typical development cycle is therefore:
 
-```
-Local Git Repository
-        │
-        ├── Edit rtl/
-        │
-        ├── sync     (alias -> scr/ssh_rsync)
-        │              SSH + rsync
-        │              ▼
-        │           eceap1 / rtl/
-        │
-        ├── sim      (alias -> scr/remote_sim)
-        │
-        └── syn      (alias -> scr/remote_syn)
+```bash
+source scr/env.sh
+
+# Edit RTL
+vim rtl/...
+
+# Copy RTL to eceap1
+sync
+
+# Run simulation
+sim
+
+# Run synthesis
+syn
 ```
 
-GitHub is used for version control. Remote synchronization is handled directly through SSH/rsync. Use an SSH key, never a saved password.
+The scripts handle the remote file synchronization and execution, so the normal workflow remains:
+
+```text
+Local Repository
+      │
+      │ edit
+      ▼
+    rtl/
+      │
+      │ sync
+      ▼
+eceap1:/.../rtl/
+      │
+      ├── sim
+      │
+      └── syn
+```
