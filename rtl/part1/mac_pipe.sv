@@ -9,10 +9,7 @@ module mac_pipe #(
     output logic signed [WIDTH-1:0] out,
     input clk, reset, init_acc, input_valid
 );
-    signed [2*WIDTH-1:0] mult_add;
     signed [ACCW-1:0] next_value = 0;
-
-    assign mult_add = input0 * input1 + next_value;
 
     always_ff @(posedge clk) begin
         if (rest)
@@ -20,7 +17,7 @@ module mac_pipe #(
         else if (init_acc)
             next_value = init_value;
         else if (input_valid) 
-            next_value = mult_add;
+            next_value = input0 * input1 + next_value;;
         else 
             next_value = next_value;
     end 
