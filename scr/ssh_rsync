@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# =========================
+# User configuration
+# =========================
+
+REMOTE_USER="jinchen"
+REMOTE_HOST="eceap1.ece.stonybrook.edu"
+REMOTE_PROJECT="~/ese507/project"
+
+# =========================
+# Project paths
+# =========================
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOCAL_RTL="$PROJECT_ROOT/rtl/"
+
+# =========================
+# Sync RTL
+# =========================
+
+echo "Syncing RTL..."
+echo "Local : $LOCAL_RTL"
+echo "Remote: $REMOTE_USER@$REMOTE_HOST:$REMOTE_PROJECT/rtl/"
+echo
+
+# Create the remote RTL directory
+ssh "$REMOTE_USER@$REMOTE_HOST" \
+    "mkdir -p $REMOTE_PROJECT/rtl"
+
+# Synchronize RTL
+rsync -avz --delete \
+    "$LOCAL_RTL" \
+    "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PROJECT/rtl/"
+
+echo
+echo "Sync complete."

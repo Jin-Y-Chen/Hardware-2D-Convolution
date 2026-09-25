@@ -16,4 +16,3 @@ F: no floating-point?
 -
 Q: what's a recommend project folder structure with emphasizes on automation with script
     - folder name, consistency
-
