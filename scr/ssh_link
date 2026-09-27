@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Host-master link of rtl/ and tb/ with lab40.
-#   1) push host  -> remote  (host wins; --delete drops remote leftovers)
-#   2) pull remote -> host   (--ignore-existing: never overwrite host files)
-# Never copies tool-only files (work/, waves, transcripts, DC/Questa junk).
+#   1) push host -> remote: same-name files take the host copy (no --delete)
+#   2) pull remote -> host: only new / different names (host files kept)
+# Tool junk (work/, waves, transcripts, Questa/DC logs) is never copied.
 #   link
 
 set -euo pipefail
@@ -35,7 +35,7 @@ sync_one() {
 
     echo "-- $name/"
     if [[ "$mode" == push ]]; then
-        out=$(rsync_project_ssh "$name" "${extras[@]}" --delete "$local_dir/" "$remote")
+        out=$(rsync_project_ssh "$name" "${extras[@]}" "$local_dir/" "$remote")
         report_xfer "$out" "(already up to date)"
     else
         out=$(rsync_project_ssh "$name" "${extras[@]}" --ignore-existing "$remote" "$local_dir/" || true)
@@ -53,7 +53,7 @@ echo "== push this computer -> lab40 =="
 sync_one rtl push
 sync_one tb push
 
-echo "== pull lab40 -> this computer (host files kept) =="
+echo "== pull lab40 -> this computer (new names only) =="
 sync_one rtl pull
 sync_one tb pull
 

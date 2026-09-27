@@ -119,12 +119,13 @@ Host  tb/   --push-->  lab40:~/ese507/project/tb/
 
 ### link
 
-Host is master: **push** both trees, then **pull** with `--ignore-existing`.
+Host is master.
 
-* Syncs `rtl/` and `tb/` to `~/ese507/project/{rtl,tb}`
+* **Push:** same-name files on lab40 are replaced with the host copy
+* **Pull:** only files with a new / different name (host files are never overwritten)
 * Skips `tb/README.md`
 * Never copies `work/`, waves, transcripts, or other tool junk
-* `--delete` on push so remote leftovers go away
+* No `--delete` on push, so a new file created on lab40 can be pulled
 
 ### vlog
 
@@ -137,7 +138,7 @@ vlog part1/mac.sv tb/part1/mac_tb.sv tb/part1/mac_tb.c
 vlog --all
 ```
 
-Edit `tb/part1/params.sv`, then `link`, then `vsim`. `vsim` does not copy params; `mac_tb` includes the file already on lab40.
+Edit `tb/part1/params.sv` (`WIDTHVAL` / `ACCWVAL` / `PIPELINEDVAL` / `SEEDVAL`), then `link`, then `vsim`. `SEEDVAL` is `random` or a pasted `Sv_Seed` to reproduce. `vsim` does not copy params.
 
 ### vsim
 
@@ -147,7 +148,7 @@ Edit `tb/part1/params.sv`, then `link`, then `vsim`. `vsim` does not copy params
 vsim mac_tb
 ```
 
-Batch only (`vsim -c`). Cycle dumps are in the transcript / `log/vsim.log` (`TRACE` in `mac_tb.sv`).
+Batch only (`vsim -c`). The course TB transcript is copied to `log/vsim.log`.
 
 Change WIDTH/ACCW/PIPELINED, then:
 
