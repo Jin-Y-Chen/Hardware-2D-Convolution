@@ -113,6 +113,7 @@ void dump_cycle(long long t, int rst, int init_acc, int valid, int Q,
     i128_hex(accum, acch, sizeof acch);
     i128_str(prod_pipe, prods, sizeof prods);
     i128_hex(prod_pipe, prodh, sizeof prodh);
+    (void)expv;
 
     if (fail_n > 0)
         printf("\n[FAIL] t=%lld | reset=%d init_acc=%d input_valid=%d Q=%d\n",
@@ -136,7 +137,6 @@ void dump_cycle(long long t, int rst, int init_acc, int valid, int Q,
     printf("\n  --- outputs ---\n");
     kv_i("out", outv);
     kv_i("out_exp_d", exp_d);
-    kv_i("out_exp", expv);
 
     printf("\n  --- golden (C) ---\n");
     kv_dec_hex("accum", accs, acch);
