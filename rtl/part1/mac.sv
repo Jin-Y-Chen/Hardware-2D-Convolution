@@ -1,18 +1,17 @@
-import com_pkg::*;
+import param_pkg::*;
 
 module mac #(
-    parameter WIDTH = WIDTH,
-    parameter ACCW = ACCW
+    parameter WIDTH = 16,
+    parameter ACCW = 48
 )(
     input logic signed [WIDTH-1:0] input0, input1, init_value,
     input [6:0] Q,
     output logic signed [WIDTH-1:0] out,
     input clk, reset, init_acc, input_valid
 );
-    reg signed [ACCW-1:0] acc = 0;
+    reg signed [ACCW-1:0] acc;
 
-    always_comb begin
-        logic signed [ACCW-1:0] quant; 
+    always_comb begin : pre_acc
         if (reset)
             acc = 0;
         else if (init_acc)
@@ -22,17 +21,24 @@ module mac #(
         else 
             acc = acc;
 
-        //perform quantization
-        if (!reset && (Q > 0 && Q < ACCW))
-                quant = acc >>> Q;
 
-        //perform saturation
-        if (quant > MAXOUT)
-            out = MAXOUT[WIDTH-1:0];
-        else if (quant < MINOUT)
-            out = MINOUT[WIDTH-1:0];
-        else 
-            out = quant[WIDTH-1:0];
+    end 
+
+    always_ff @(negedge clk) begin
+        logic signed [ACCW-WIDTH-1 : 0] sat_window;
+        //out is quantized of acc
+        if ((init_acc || input_valid)) begin
+            sat_window = acc[(ACCW-WIDTH-1) : WIDTH] >>> (Q % ACCW);
+        
+            ///out is quantized + saturate of acc
+            if (sat_window > 0)
+                out <= MAXOUT[WIDTH-1:0];
+            else if (sat_window < 0)
+                out <= MINOUT[WIDTH-1:0];
+            else 
+                out <= acc >>> (Q % ACCW);
+        end else
+            out <= acc >>> (Q % ACCW);
     end 
 
 endmodule

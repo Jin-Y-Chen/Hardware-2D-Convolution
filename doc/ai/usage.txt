@@ -1,6 +1,7 @@
 AI Usage Log
 
-Scripts and Automation is generated with AI
+Scripts for Automation is written by AI
+Testbench is also enchanced with AI, display signal name so tha GUI is not necesesary 
 
 Date: 9/20, once upon good evening
     --------------------------------------------------
@@ -16,17 +17,15 @@ Date: 9/20, once upon good evening
     [Cursor Grok-4.6] 
     R: *Large graphical structure, A seperate folder for testbench, each step of the design process(sim, syn), input, and output folder
 
-Date: 9/25, earbubs inside headphones(no music)
+Date: 9/24, earbubs inside headphones(no music)
     --------------------------------------------------
     Q: how to sign extend in verilog?
 
-    [Cursor Grok-4.6] 
     R: if both sides are signed. A <= B automatic sign-extends. No build in unextend, usedsplicing
 
     ---------------------------------------------------
     Q: how to add package in verilog
 
-    [Cursor Grok-4.6] 
     R: // rtl/conv_pkg.sv
     package conv_pkg;
         parameter int WIDTH = 16;
@@ -55,4 +54,24 @@ Date: 9/25, earbubs inside headphones(no music)
 
     R: use reg signed [ACCW-1:0] acc = 0; instead of reg signed [ACCW-1:0] acc = 0'b0;
 
+    ---------------------------------------------------
+    Q: Error (suppressible): Variable 'quant' is implicitly static. You must either explicitly declare it as static or automatic
+    
     R: quant is declared and initalized inside always_comb. lifetime is not specified, so the tool refuses the implicit default. Declare it in the main body or don't initalize
+
+Date: 9/25, earbubs inside headphones(with music)
+    ---------------------------------------------------
+    Q: Error: near "if": syntax error, unexpected if, expecting IDENTIFIER or TYPE_IDENTIFIER or NETTYPE_IDENTIFIER.
+
+    R: Missing semicolon on the pervious line *yikes
+
+    ---------------------------------------------------
+    Q: what is ouput_exp_d in mac_tb.sv
+
+    R: out_exp_d is the delayed expected output: last cycle’s C-model result, held for one cycle and compared to the DUT’s out
+
+Date: 9/26, Antother day anther coffee
+    ---------------------------------------------------
+    Q: *linking my simulation script, ssh_vsim, make sure to push correct parameter to remote and pull simulation log to host
+
+    R: *written and modify ssh_vsim to reference simParams1, which was encahned to display all signal

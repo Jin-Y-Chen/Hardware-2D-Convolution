@@ -1,4 +1,4 @@
-import comm_pkg::*;
+import param_pkg::*;
 
 module mac_pipe #(
     parameter WIDTH = 16,
@@ -9,32 +9,32 @@ module mac_pipe #(
     output logic signed [WIDTH-1:0] out,
     input clk, reset, init_acc, input_valid
 );
-    signed [ACCW-1:0] next_value = 0;
+    logic signed [ACCW-1:0] next_value = 0;
 
     always_ff @(posedge clk) begin
-        if (rest)
-            next_value = 0;
+        if (reset)
+            next_value <= 0;
         else if (init_acc)
-            next_value = init_value;
+            next_value <= init_value;
         else if (input_valid) 
-            next_value = input0 * input1 + next_value;;
+            next_value <= input0 * input1 + next_value;
         else 
-            next_value = next_value;
+            next_value <= next_value;
     end 
 
     always_comb begin
-        signed [ACCW-1:0] quant,
+        logic signed [ACCW-1:0] quant;
         //perform quantization
-        if (!rest && (Q > 0 && Q < ACCW))
+        if (!reset && (Q > 0 && Q < ACCW))
             quant = (next_value >>> Q); 
         
         //perform saturation
-        if quant > MAXOUT
+        if (quant > MAXOUT)
             out = MAXOUT[WIDTH-1:0];
-        else if quant < MINOUT
+        else if (quant < MINOUT)
             out = MINOUT[WIDTH-1:0];
         else 
-            out = quant[WDITH-1:0];
+            out = quant[WIDTH-1:0];
     end 
 
 endmodule

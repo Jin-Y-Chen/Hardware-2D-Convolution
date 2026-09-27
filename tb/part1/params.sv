@@ -1,0 +1,3 @@
+`define WIDTHVAL 16
+`define ACCWVAL 48
+`define PIPELINEDVAL 0

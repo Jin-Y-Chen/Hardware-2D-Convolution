@@ -1,1 +1,0 @@
-Tool output log and working files

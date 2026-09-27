@@ -1,0 +1,265 @@
+// ESE 507 Stony Brook University
+// Peter Milder
+// You may not redistribute this code.
+// Testbench for mac and mac_pipe modules
+
+// To use this testbench:
+// Compile it and your accompanying design with:
+//   vlog -64 +acc mac_tb.sv mac_tb.c [add your other .sv files to simulate here]
+//   vsim -64 -c mac_tb -sv_seed random
+//      [options]:
+//       - If you want to run in GUI mode, remove -c
+
+// Note that this testbench relies on params.sv, which can be generated
+// using ./simParams1 WIDTH ACCW PIPELINED. See the project description.
+
+// Please see the project description for a high-level description of this testbench and how to run it. Comments are also included throughout to help understand how the testbench works.
+
+// Import the C functions (from mac_tb.c) that will calculate the expected outputs of the MAC unit, for pipelined and unpipelined MACs.
+import "DPI-C" function void sim_cycle_pipelined(input int input0, input int input1, input int init_value,
+                                                 input bit input_valid, input bit init_acc, input bit reset,
+                                                 input int Q, input int WIDTH, input int ACCW,
+                                                 output longint res);
+import "DPI-C" function void sim_cycle_unpipelined(input int input0, input int input1, input int init_value,
+                                                   input bit input_valid, input bit init_acc, input bit reset,
+                                                   input int Q, input int WIDTH, input int ACCW,
+                                                   output longint res);
+import "DPI-C" function void dump_cycle(input longint t,
+                                        input int rst, input int init_acc, input int valid, input int Q,
+                                        input int i0, input int i1, input int initv,
+                                        input int outv, input int exp_d, input int expv,
+                                        input longint acc_dut,
+                                        input int pipelined, input int fail_n);
+import "DPI-C" function void dump_summary(input int cycles, input int fails,
+                                          input longint last_t, input int last_out, input int last_exp);
+
+// Include the params.sv file, which holds the parameter values
+`include "params.sv"
+
+// A class to hold one instance of test data and associated control logic.
+// When we call .randomize() on an object of this class, it will randomly
+// generate values for the inputs input0, input1, init_value, and the control
+// signals input_valid, init_acc, and reset. The init_acc and reset signals are
+// constrained such that they are usually 0 (99% and 99.5% of the time), but
+// init_acc is asserted along with reset half of the time that reset is asserted.
+//
+// The data values are biased toward the extremes: each of input0, input1, and
+// init_value takes its most negative or most positive value about 5% of the
+// time. Uniformly random values almost never produce the largest-magnitude
+// products, which are what exercise saturation and the corners of the
+// arithmetic.
+//
+// It also generates a random shift amount Q in the range [0, ACCW-1]. The
+// testbench drives a new Q every cycle, so Q is not held constant over an
+// accumulation. This is deliberate: it checks that Q is aligned with the data
+// it accompanied, not merely that it works when it is held constant.
+class testdata #(parameter WIDTH=8, ACCW=20);
+    localparam int MAXV =  (1 << (WIDTH-1)) - 1;   // largest WIDTH-bit signed value
+    localparam int MINV = -(1 << (WIDTH-1));       // smallest WIDTH-bit signed value
+
+    rand bit signed [WIDTH-1:0] input0, input1, init_value;
+    rand bit [6:0] Q;
+    rand bit input_valid;
+    rand bit init_acc;
+    rand bit reset;
+
+    // init_acc is rare, except that when reset is asserted, init_acc is also
+    // asserted half of the time, so that the priority of reset over init_acc
+    // is exercised.
+    constraint init_acc_constr {
+        if (reset) init_acc dist {0:=1, 1:=1};
+        else       init_acc dist {0:=99, 1:=1};
+    }
+    // reset is asserted on about 0.5% of cycles.
+    constraint reset_constr {reset dist {0:=199, 1:=1};}
+
+    // Q can be any shift amount from 0 to ACCW-1.
+    constraint Q_constr {Q inside {[0:ACCW-1]};}
+
+
+    // Randomly set input0, input1, and init_value to be
+    //    - the min value (most negative) 5% of the time
+    //    - the max value (most positive) 5% of the time
+    //    - uniformly random across the entire range 90% of the time
+    // Ensuring a good number of min/max values helps catch bugs in things
+    // like signal widths, sign extension, saturation logic, etc.
+    constraint value_constr {
+        input0     dist {MINV:=5, MAXV:=5, [MINV:MAXV]:/90};
+        input1     dist {MINV:=5, MAXV:=5, [MINV:MAXV]:/90};
+        init_value dist {MINV:=5, MAXV:=5, [MINV:MAXV]:/90};
+    }
+
+    // Set every field by hand (instead of randomizing), for directed tests.
+    function void set(input bit signed [WIDTH-1:0] i0, i1, iv, input bit [6:0] q,
+                      input bit valid, init, rst);
+        input0 = i0; input1 = i1; init_value = iv; Q = q;
+        input_valid = valid; init_acc = init; reset = rst;
+    endfunction
+endclass
+
+
+
+module mac_tb();
+
+    parameter TESTS = 10000;             // the number of cycles of input to simulate
+    parameter WIDTH = `WIDTHVAL;         // the number of bits in the inputs and the output
+    parameter ACCW  = `ACCWVAL;          // the number of bits in the accumulator
+    parameter PIPELINED = `PIPELINEDVAL; // 0 for unpipelined design, 1 for pipelined design
+    parameter TRACE = 1;                 // 1: print every cycle; 0: fails only
+
+    logic clk, reset;
+    initial clk = 0;
+    always #5 clk = ~clk;
+
+    logic signed [WIDTH-1:0] input0, input1, init_value;
+    logic signed [WIDTH-1:0] out, out_exp, out_exp_d;
+    logic [6:0] Q;
+    logic input_valid, init_acc;
+    logic signed [ACCW-1:0] dut_acc;
+
+    // Instantiate the DUT based on PIPELINED parameter
+    generate
+        if (PIPELINED == 1) begin : g_pipe
+            mac_pipe #(WIDTH, ACCW) dut(input0, input1, init_value, Q, out, clk, reset, init_acc, input_valid);
+            always_comb dut_acc = dut.next_value;
+        end else begin : g_mac
+            mac #(WIDTH, ACCW) dut(input0, input1, init_value, Q, out, clk, reset, init_acc, input_valid);
+            always_comb dut_acc = dut.acc;
+        end
+    endgenerate
+
+    // An object of class "testdata" (See class definition above). td holds the
+    // inputs for the current cycle.
+    testdata #(WIDTH, ACCW) td;
+
+    integer errors = 0;
+    integer cycles = 0;
+    longint last_fail_t = 0;
+    int last_fail_out = 0;
+    int last_fail_exp = 0;
+
+    // Check and display simulation parameters
+    initial begin
+        if ((WIDTH < 2) || (WIDTH >= 32)) begin
+            $error("PARAMETER ERROR: WIDTH must be >= 2 and < 32");
+            $stop;
+        end
+
+        if ((ACCW < 2) || (ACCW > 80)) begin
+            $error("PARAMETER ERROR: ACCW must be >= 2 and <= 80");
+            $stop;
+        end
+
+        if (ACCW < 2*WIDTH) begin
+            $error("PARAMETER ERROR: ACCW must be >= 2*WIDTH");
+            $stop;
+        end
+
+        $display("[INFO] mac_tb - DUT vs C golden model");
+        $display("========================================");
+        $display("[INFO] tests=%0d  pipelined=%0d  WIDTH=%0d  ACCW=%0d", TESTS, PIPELINED, WIDTH, ACCW);
+    end
+
+    task print_summary();
+        dump_summary(cycles, errors, last_fail_t, last_fail_out, last_fail_exp);
+    endtask
+
+
+    // Run one cycle of the test using the inputs held in td. Set the DUT inputs
+    // to match td. Then, call the appropriate C function using the DPI
+    // interface, which will compute the expected output for this cycle, and
+    // check that the result matches.
+    //
+    // Note on when the output is checked: the value the C model computes on
+    // a given cycle is the output the DUT should produce during the
+    // *following* cycle, once the accumulator has been updated. So we save
+    // it in out_exp_d and check it one cycle later. That check happens
+    // at the negedge, in the middle of the cycle, after every input for
+    // that cycle has been driven and has settled. Checking just after the
+    // posedge instead would leave the previous cycle's Q value still
+    // applied to the DUT, which hides bugs in how Q is aligned with
+    // the accumulator.
+    task run_cycle();
+        input0 = td.input0;
+        input1 = td.input1;
+        init_value = td.init_value;
+        input_valid = td.input_valid;
+        init_acc = td.init_acc;
+        reset = td.reset;
+
+        // Drive a new Q every cycle
+        Q = td.Q;
+
+        if (PIPELINED == 1)
+            sim_cycle_pipelined(td.input0, td.input1, td.init_value, td.input_valid, td.init_acc, td.reset, td.Q, WIDTH, ACCW, out_exp);
+        else
+            sim_cycle_unpipelined(td.input0, td.input1, td.init_value, td.input_valid, td.init_acc, td.reset, td.Q, WIDTH, ACCW, out_exp);
+
+        // Mid-cycle: check the output that the previous cycle predicted
+        @(negedge clk);
+        cycles = cycles + 1;
+
+        if (out !== out_exp_d) begin
+            errors = errors+1;
+            last_fail_t = $time;
+            last_fail_out = int'(out);
+            last_fail_exp = int'(out_exp_d);
+            dump_cycle(longint'($time), int'(reset), int'(init_acc), int'(input_valid), int'(Q),
+                       int'(input0), int'(input1), int'(init_value),
+                       int'(out), int'(out_exp_d), int'(out_exp),
+                       longint'(dut_acc), PIPELINED, errors);
+        end else if (TRACE) begin
+            dump_cycle(longint'($time), int'(reset), int'(init_acc), int'(input_valid), int'(Q),
+                       int'(input0), int'(input1), int'(init_value),
+                       int'(out), int'(out_exp_d), int'(out_exp),
+                       longint'(dut_acc), PIPELINED, 0);
+        end
+
+        out_exp_d = out_exp;
+
+        @(posedge clk);
+        #1;
+
+        // Start a fresh object for the next cycle.
+        td = new();
+    endtask
+
+
+    initial begin
+        // Hold reset for the first clock edge. All registers must be 0
+        // after this edge, so the first output check expects 0.
+        input0 = 0; input1 = 0; init_value = 0; Q = 0;
+        input_valid = 0; init_acc = 0; reset = 1;
+        out_exp_d = 0;
+
+        @(posedge clk);
+        #1;
+        td = new();
+
+        // Before the random tests, run a few directed cycles that test 
+        // accumulator saturation.
+        // Each sequence: initialize the accumulator to the boundary,
+        // add a product of +1 or -1 with Q=0, then idle for two cycles so
+        // that the result reaches the output.
+        td.set(0,  0, td.MAXV, 0, 0, 1, 0); run_cycle();   // accumulator <- MAXV
+        td.set(1,  1, 0,       0, 1, 0, 0); run_cycle();   // accumulator <- MAXV + 1; out must be MAXV
+        td.set(0,  0, 0,       0, 0, 0, 0); run_cycle();
+        td.set(0,  0, 0,       0, 0, 0, 0); run_cycle();
+        td.set(0,  0, td.MINV, 0, 0, 1, 0); run_cycle();   // accumulator <- MINV
+        td.set(1, -1, 0,       0, 1, 0, 0); run_cycle();   // accumulator <- MINV - 1; out must be MINV
+        td.set(0,  0, 0,       0, 0, 0, 0); run_cycle();
+        td.set(0,  0, 0,       0, 0, 0, 0); run_cycle();
+
+        // Now the random tests: for each cycle, randomize the td object and
+        // run one cycle with those inputs.
+        repeat(TESTS) begin
+            assert(td.randomize());
+            run_cycle();
+        end
+
+        print_summary();
+        #10;
+        $finish;
+    end
+
+endmodule

@@ -1,0 +1,17 @@
+QuestaSim-64 vlog 2023.4_3 Compiler 2024.02 Feb 17 2024
+Start time: 22:01:21 on Sep 26,2026
+vlog -sv -work /home/home5/jinchen/ese507/project/work "+acc" "+incdir+." "+incdir+../../rtl" "+incdir+../../rtl/part1" ../../rtl/param_pkg.sv ../../rtl/part1/mac.sv mac_tb.sv mac_tb.c -l /home/home5/jinchen/ese507/project/rtl/vlog_mac.log 
+-- Compiling package param_pkg
+-- Compiling package mac_sv_unit
+-- Importing package param_pkg
+-- Compiling module mac
+-- Compiling package mac_tb_sv_unit
+-- Compiling module mac_tb
+** Warning: mac_tb.sv(124): (vlog-2583) [SVCHK] - Extra checking for conflicts with always_comb and always_latch variables is done at vopt time.
+** Warning: mac_tb.sv(127): (vlog-2583) [SVCHK] - Extra checking for conflicts with always_comb and always_latch variables is done at vopt time.
+
+Top level modules:
+	mac_tb
+-- Compiling DPI/PLI C file mac_tb.c
+End time: 22:01:21 on Sep 26,2026, Elapsed time: 0:00:00
+Errors: 0, Warnings: 2

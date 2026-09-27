@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Compile selected RTL on lab40 with vlog.
+#   vlog part1/mac.sv
+#   vlog part1/mac.sv part1/mac_pipe.sv
+#   vlog --all
+# Transcript: log/vlog.log  (look for Errors: 0)
+
+set -euo pipefail
+# shellcheck source=cad_common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cad_common.sh"
+
+usage() {
+    cat <<'EOF'
+Usage:  vlog [options] <file> [<file> ...]
+
+Files are under rtl/ or tb/ (prefixes optional).
+
+  vlog --list
+  vlog part1/mac.sv
+  vlog part1/mac.sv tb/part1/mac_tb.sv
+  vlog --all
+
+  -h, --help    this message
+  -l, --list    list rtl/ and tb/ sources
+  -a, --all     every rtl/ and tb/ .sv/.c
+EOF
+}
+
+WANT_ALL=0
+SELECTED=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) usage; exit 0 ;;
+        -l|--list) echo "Sources:"; list_src; exit 0 ;;
+        -a|--all)  WANT_ALL=1; shift ;;
+        --) shift; SELECTED+=("$@"); break ;;
+        -*) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+        *) SELECTED+=("$1"); shift ;;
+    esac
+done
+
+resolve_src_files
+mkdir -p "$LOCAL_LOG"
+
+echo "ssh_vlog"
+echo "Host : $REMOTE_USER@$REMOTE_HOST"
+echo "Files: $FILE_LIST"
+echo
+
+set +e
+ssh_lab40 <<REMOTE
+$REMOTE_CAD_BOOTSTRAP
+if [ -z "\${VLOG:-}" ] || [ ! -x "\$VLOG" ]; then
+    echo "ERROR: vlog not found on this host." >&2
+    exit 1
+fi
+
+PROJ="\$HOME/$REMOTE_PROJECT_REL"
+RTL="\$PROJ/rtl"
+LOG="\$RTL/vlog_mac.log"
+cd "\$PROJ"
+"\$VLIB" work >/dev/null 2>&1 || true
+
+FILES="$FILE_LIST"
+echo "== vlog =="
+echo "files: \$FILES"
+"\$VLOG" -64 -sv +acc +incdir+tb/part1 +incdir+rtl +incdir+rtl/part1 \$FILES -l "\$LOG"
+
+if grep -q "Errors: 0" "\$LOG"; then
+    printf '%s\n' \$FILES > "\$PROJ/work/.vlog_files"
+    echo "COMPILE OK (Errors: 0)"
+else
+    echo "COMPILE FAILED" >&2
+    exit 1
+fi
+REMOTE
+vlog_rc=$?
+set -e
+
+echo
+rsync_from_remote "~/$REMOTE_RTL_REL/vlog_mac.log" "$LOCAL_LOG/vlog.log" || true
+if [[ -f "$LOCAL_LOG/vlog.log" ]]; then
+    echo "Local copy: $LOCAL_LOG/vlog.log"
+fi
+exit "$vlog_rc"
