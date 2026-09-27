@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Git Bash / WSL aliases. From repo root or any subdir:
-#   source scr/env.sh
-#   sync
-#   sim
-#   syn
+# source scr/env.sh
+#   link   vlog   vsim   vsyn
+# Functions (not aliases) so they override /usr/bin/link and other PATH tools.
+# Drop leftover aliases from an older env.sh — bash cannot redefine an alias as a function.
+unalias link vlog vsim vsyn sync sim syn 2>/dev/null || true
 
 _ese507_root() {
     git rev-parse --show-toplevel 2>/dev/null
@@ -18,6 +18,7 @@ _ese507_scr() {
     "$root/scr/$1" "${@:2}"
 }
 
-alias sync='_ese507_scr ssh_rsync'
-alias sim='_ese507_scr remote_sim'
-alias syn='_ese507_scr remote_syn'
+link() { _ese507_scr ssh_link "$@"; }
+vlog() { _ese507_scr ssh_vlog "$@"; }
+vsim() { _ese507_scr ssh_vsim "$@"; }
+vsyn() { _ese507_scr ssh_vsyn "$@"; }

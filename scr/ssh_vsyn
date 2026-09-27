@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Synthesize selected RTL on lab40 with Design Compiler (dc_shell).
+#   vsyn part1/mac.sv
+#   vsyn --top mac part1/mac.sv
+#   vsyn --tcl syn/part1/mac.tcl
+# Log: log/vsyn.log
+
+set -euo pipefail
+# shellcheck source=cad_common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cad_common.sh"
+
+usage() {
+    cat <<'EOF'
+Usage:  vsyn [options] <file> [<file> ...]
+
+  vsyn part1/mac.sv
+  vsyn --top mac part1/mac.sv
+  vsyn --tcl syn/part1/mac.tcl     run your DC script instead of the default
+
+  -h, --help
+  -l, --list
+  -a, --all
+  -t, --top NAME     elaborate this module (default: mac)
+  --tcl FILE         DC tcl path relative to the repo root
+EOF
+}
+
+WANT_ALL=0
+TOP="mac"
+TCL=""
+SELECTED=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) usage; exit 0 ;;
+        -l|--list) echo "Sources under rtl/"; list_rtl; exit 0 ;;
+        -a|--all)  WANT_ALL=1; shift ;;
+        -t|--top)  TOP="$2"; shift 2 ;;
+        --tcl)     TCL="$2"; shift 2 ;;
+        --) shift; SELECTED+=("$@"); break ;;
+        -*) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+        *) SELECTED+=("$1"); shift ;;
+    esac
+done
+
+TCL_LOCAL=""
+if [[ -n "$TCL" ]]; then
+    if [[ -f "$PROJECT_ROOT/$TCL" ]]; then
+        TCL_LOCAL="$PROJECT_ROOT/$TCL"
+    elif [[ -f "$TCL" ]]; then
+        TCL_LOCAL="$TCL"
+    else
+        echo "Not found: $TCL" >&2
+        exit 2
+    fi
+    FILE_LIST=""
+else
+    resolve_rtl_files
+fi
+
+mkdir -p "$LOCAL_LOG"
+
+echo "ssh_vsyn"
+echo "Host : $REMOTE_USER@$REMOTE_HOST"
+echo "Top  : $TOP"
+echo "Files: ${FILE_LIST:-<tcl $TCL>}"
+echo
+
+if [[ -n "$TCL_LOCAL" ]]; then
+    rsync_to_remote "$TCL_LOCAL" "~/$REMOTE_RTL_REL/user.tcl"
+    ssh_lab40 <<REMOTE
+$REMOTE_CAD_BOOTSTRAP
+RTL="\$HOME/$REMOTE_RTL_REL"
+cd "\$RTL"
+"\$DC_SHELL" -f user.tcl | tee "\$RTL/dc_mac.log"
+REMOTE
+else
+    ssh_lab40 <<REMOTE
+$REMOTE_CAD_BOOTSTRAP
+if [ -z "\${DC_SHELL:-}" ] || [ ! -x "\$DC_SHELL" ]; then
+    echo "ERROR: dc_shell not found." >&2
+    exit 1
+fi
+RTL="\$HOME/$REMOTE_RTL_REL"
+cd "\$RTL"
+"\$DC_SHELL" -x '
+analyze -format sverilog {$FILE_LIST}
+elaborate $TOP
+compile
+report_qor
+exit
+' | tee "\$RTL/dc_mac.log"
+REMOTE
+fi
+
+echo
+rsync_from_remote "~/$REMOTE_RTL_REL/dc_mac.log" "$LOCAL_LOG/vsyn.log" || true
+if [[ -f "$LOCAL_LOG/vsyn.log" ]]; then
+    echo "Local copy: $LOCAL_LOG/vsyn.log"
+fi

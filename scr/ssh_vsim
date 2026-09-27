@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+# Simulate on lab40. Recompiles RTL/TB that are newer than work/ (e.g. after link).
+#   vsim mac_tb
+#   vsim --seed 1896683400 mac_tb
+# Transcript: log/vsim.log
+
+set -euo pipefail
+# shellcheck source=cad_common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cad_common.sh"
+
+usage() {
+    cat <<'EOF'
+Usage:  vsim [options] [<top>] [<file> ...]
+
+Recompiles RTL or tb/ that are missing from work/ or newer than the
+last compile (link updates timestamps). Creates work/ if needed.
+
+  link          # push rtl/ and tb/ (including params.sv)
+  vsim mac_tb   # compile and run only; does not copy params.sv
+
+  -h, --help
+  -l, --list
+  -a, --all              require last vlog to have compiled every rtl source
+  -t, --top NAME         elaboration top (default: mac_tb)
+  -s, --seed N           -sv_seed (default: random)
+EOF
+}
+
+WANT_ALL=0
+TOP="mac_tb"
+SEED="random"
+SELECTED=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) usage; exit 0 ;;
+        -l|--list) echo "Sources:"; list_src; exit 0 ;;
+        -a|--all)  WANT_ALL=1; shift ;;
+        -t|--top)  TOP="$2"; shift 2 ;;
+        -s|--seed)   SEED="$2"; shift 2 ;;
+        --) shift; SELECTED+=("$@"); break ;;
+        -*) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+        *)
+            if [[ "$1" == *.sv || "$1" == *.c || "$1" == */* ]]; then
+                SELECTED+=("$1")
+            else
+                TOP="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+if [[ ${#SELECTED[@]} -eq 0 && "$WANT_ALL" -eq 0 ]]; then
+    if [[ -f "$LOCAL_RTL/part1/${TOP}.sv" ]]; then
+        SELECTED=("rtl/part1/${TOP}.sv")
+    elif [[ -f "$LOCAL_RTL/part1/mac.sv" ]]; then
+        SELECTED=("rtl/part1/mac.sv")
+    fi
+    if [[ "$TOP" == mac_tb && -f "$LOCAL_TB/part1/mac_tb.sv" ]]; then
+        SELECTED+=("tb/part1/mac_tb.sv")
+    fi
+    [[ -f "$LOCAL_TB/part1/mac_tb.c" ]] && SELECTED+=("tb/part1/mac_tb.c")
+fi
+
+resolve_src_files
+if [[ -f "$LOCAL_RTL/param_pkg.sv" && " $FILE_LIST " != *" rtl/param_pkg.sv "* ]]; then
+    FILE_LIST="rtl/param_pkg.sv $FILE_LIST"
+fi
+# Include file is already on lab40 from link. Compile from tb/part1 so
+# the TB include of params.sv is not a leftover at the project root.
+VLOG_REL=""
+for f in $FILE_LIST; do
+    [[ "$f" == *params.sv ]] && continue
+    if [[ "$f" == tb/part1/* ]]; then
+        VLOG_REL="${VLOG_REL:+$VLOG_REL }${f#tb/part1/}"
+    else
+        VLOG_REL="${VLOG_REL:+$VLOG_REL }../../$f"
+    fi
+done
+mkdir -p "$LOCAL_LOG"
+rm -f "$LOCAL_LOG/vsim.log"
+
+echo "ssh_vsim"
+echo "Host : $REMOTE_USER@$REMOTE_HOST"
+echo "Top  : $TOP"
+echo "Seed : $SEED"
+echo "Need : $FILE_LIST"
+echo
+
+set +e
+ssh_lab40 <<REMOTE
+$REMOTE_CAD_BOOTSTRAP
+if [ -z "\${VSIM:-}" ] || [ ! -x "\$VSIM" ]; then
+    echo "ERROR: vsim not found on this host." >&2
+    exit 1
+fi
+
+PROJ="\$HOME/$REMOTE_PROJECT_REL"
+WORK="\$PROJ/work"
+VLOG_LOG="\$PROJ/rtl/vlog_mac.log"
+VSIM_LOG="\$PROJ/rtl/vsim_mac.log"
+cd "\$PROJ"
+rm -f "\$VSIM_LOG" params.sv rtl/params.sv rtl/part1/params.sv
+
+if [ -z "\${VLOG:-}" ] || [ ! -x "\$VLOG" ]; then
+    echo "ERROR: vlog not found." >&2
+    exit 1
+fi
+if [ ! -f tb/part1/params.sv ]; then
+    echo "ERROR: tb/part1/params.sv missing on lab40. Run link first." >&2
+    exit 1
+fi
+echo "== tb/part1/params.sv (included) =="
+cat tb/part1/params.sv
+
+rm -rf "\$WORK"
+"\$VLIB" work
+echo "== vlog (cwd tb/part1) =="
+echo "files: $VLOG_REL"
+cd tb/part1
+"\$VLOG" -64 -sv -work "\$WORK" +acc +incdir+. +incdir+../../rtl +incdir+../../rtl/part1 \
+    $VLOG_REL -l "\$VLOG_LOG"
+if ! grep -q "Errors: 0" "\$VLOG_LOG"; then
+    tail -n 12 "\$VLOG_LOG"
+    echo "COMPILE FAILED" >&2
+    exit 1
+fi
+cd "\$PROJ"
+printf '%s\n' $VLOG_REL > "\$WORK/.vlog_files"
+
+echo "== vsim $TOP =="
+"\$VSIM" -64 -c -work "\$WORK" $TOP -sv_seed $SEED -do 'run -all; quit' -l "\$VSIM_LOG" </dev/null
+rc=\$?
+tail -n 30 "\$VSIM_LOG" || true
+exit \$rc
+REMOTE
+vsim_rc=$?
+set -e
+
+echo
+if rsync_from_remote "~/$REMOTE_RTL_REL/vlog_mac.log" "$LOCAL_LOG/vlog.log"; then
+    echo "Local copy: $LOCAL_LOG/vlog.log"
+fi
+if rsync -az --ignore-missing-args \
+    -e "ssh -o ControlMaster=auto -o ControlPath=${SSH_CTL} -o ControlPersist=10m" \
+    "$REMOTE_USER@$REMOTE_HOST:~/$REMOTE_RTL_REL/vsim_mac.log" \
+    "$LOCAL_LOG/vsim.log" 2> >(filter_lab_noise >&2) \
+    && [[ -f "$LOCAL_LOG/vsim.log" ]]; then
+    python3 - "$LOCAL_LOG/vsim.log" <<'PY' || true
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+lines = [ln[2:] if ln.startswith("# ") else (ln[1:] if ln.startswith("#") else ln)
+         for ln in p.read_text(encoding="utf-8", errors="replace").splitlines(True)]
+keep = []
+on = False
+for ln in lines:
+    if (not on) and (ln.startswith("[INFO]") or ln.startswith("[PASS]") or ln.startswith("[FAIL]") or ln.startswith("====")):
+        on = True
+    if on:
+        keep.append(ln)
+if keep:
+    p.write_text("".join(keep), encoding="utf-8")
+PY
+    echo "Local copy: $LOCAL_LOG/vsim.log"
+fi
+exit "$vsim_rc"
