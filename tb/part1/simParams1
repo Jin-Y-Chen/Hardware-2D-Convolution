@@ -1,50 +1,40 @@
 #!/usr/bin/bash
 
-# Generate params.sv, optionally compile and simulate.
+# script to generate the params.sv file based on the command line parameters, compile the code and testbench, and run simulation
 # usage: ./simParams1 [WIDTH] [ACCW] [PIPELINED] [GUI]
-#    3 args: write params.sv only
-#    4 args: write params.sv, compile, run vsim
+#    where you will replace [WIDTH] [ACCW] and [PIPELINED] with the desired value of
+#    those parameters
 #      - WIDTH is the bitwidth of the MAC inputs and of the MAC output
 #        (2 <= WIDTH < 32)
 #      - ACCW is the bitwidth of the MAC's accumulator
 #        (ACCW must be >= 2*WIDTH and <= 80)
-#    if [GUI] is 0, the simulation will run at the command line.
-#    If [GUI] is 1, it will run QuestaSim in GUI mode.
+#    if [GUI] is 0, the simulation will run in waveform mode. If [GUI] is 1, it will
+#    run QuestaSim in GUI mode
 
-# example: for WIDTH=8, ACCW=24, PIPELINED=0, write params.sv only:
-#        ./simParams1 8 24 0
-# command-line sim:
+# example: for WIDTH=8, ACCW=24, PIPELINED=0, simulating at the command line only, run:
 #        ./simParams1 8 24 0 0
-# GUI (run with &):
+
+# If you want to run in GUI mode, you should run with & at the end, like
 #        ./simParams1 8 24 0 1 &
 
-# Note that this will compile all .sv and .c files in your directory plus
-# ../../rtl. If instead you only want to compile some of them, compile
-# directly from the command line.
+# Compiles this directory (TB + params.sv) and RTL under ../../rtl/
+# (param_pkg.sv and rtl/part1/*.sv). Edit the file list to compile a subset.
 
-if [ $# -ne 3 ] && [ $# -ne 4 ]; then
+if [ $# -ne 4 ]; then
     echo "ERROR: incorrect number of parameters given."
     echo "Usage: ./simParams1 [WIDTH] [ACCW] [PIPELINED] [GUI]"
-    echo "  3 args: write params.sv   4 args: write, compile, simulate"
     echo "See comments in simParams1 file for more information"
-    exit 1
-fi
-
-echo "\`define WIDTHVAL $1" > params.sv
-echo "\`define ACCWVAL $2" >> params.sv
-echo "\`define PIPELINEDVAL $3" >> params.sv
-echo "Wrote params.sv (WIDTH=$1 ACCW=$2 PIPELINED=$3)"
-
-if [ $# -eq 3 ]; then
-    exit 0
-fi
-
-# TB lives in tb/part1/; design lives in rtl/
-SRCS="*.sv ../../rtl/param_pkg.sv ../../rtl/part1/*.sv"
-ls *.c > /dev/null 2>&1 && SRCS="$SRCS *.c"
-vlog -64 +acc $SRCS || exit 1
-if [[ $4 -eq 0 ]]; then
-    vsim -64 -sv_seed random -c mac_tb -do "run -all; quit"
 else
-    vsim -64 -sv_seed random mac_tb
+    ./genParams1 $1 $2 $3
+    SEED=$(sed -n 's/^`define SEEDVAL //p' params.sv | tr -d '\r')
+    [[ -n "$SEED" ]] || SEED=random
+    echo "Using -sv_seed $SEED  (edit SEEDVAL in params.sv to reproduce)"
+    SRCS="*.sv ../../rtl/param_pkg.sv ../../rtl/part1/*.sv"
+    ls *.c > /dev/null 2>&1 && SRCS="$SRCS *.c"
+    vlog -64 +acc +incdir+. +incdir+../../rtl +incdir+../../rtl/part1 $SRCS || exit 1
+    if [[ $4 -eq 0 ]]; then
+        vsim -64 -sv_seed "$SEED" -c mac_tb -do "run -all; quit"
+    else
+        vsim -64 -sv_seed "$SEED" mac_tb
+    fi
 fi

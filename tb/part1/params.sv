@@ -1,3 +1,4 @@
 `define WIDTHVAL 16
 `define ACCWVAL 48
 `define PIPELINEDVAL 0
+`define SEEDVAL 999

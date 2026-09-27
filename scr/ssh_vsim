@@ -22,13 +22,14 @@ last compile (link updates timestamps). Creates work/ if needed.
   -l, --list
   -a, --all              require last vlog to have compiled every rtl source
   -t, --top NAME         elaboration top (default: mac_tb)
-  -s, --seed N           -sv_seed (default: random)
+  -s, --seed N           -sv_seed (default: SEEDVAL in params.sv)
 EOF
 }
 
 WANT_ALL=0
 TOP="mac_tb"
-SEED="random"
+SEED=""
+SEED_SET=0
 SELECTED=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -36,7 +37,7 @@ while [[ $# -gt 0 ]]; do
         -l|--list) echo "Sources:"; list_src; exit 0 ;;
         -a|--all)  WANT_ALL=1; shift ;;
         -t|--top)  TOP="$2"; shift 2 ;;
-        -s|--seed)   SEED="$2"; shift 2 ;;
+        -s|--seed)   SEED="$2"; SEED_SET=1; shift 2 ;;
         --) shift; SELECTED+=("$@"); break ;;
         -*) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
         *)
@@ -83,7 +84,11 @@ rm -f "$LOCAL_LOG/vsim.log"
 echo "ssh_vsim"
 echo "Host : $REMOTE_USER@$REMOTE_HOST"
 echo "Top  : $TOP"
-echo "Seed : $SEED"
+if [[ "$SEED_SET" -eq 0 ]]; then
+    echo "Seed : SEEDVAL in tb/part1/params.sv (after link)"
+else
+    echo "Seed : $SEED"
+fi
 echo "Need : $FILE_LIST"
 echo
 
@@ -112,6 +117,12 @@ if [ ! -f tb/part1/params.sv ]; then
 fi
 echo "== tb/part1/params.sv (included) =="
 cat tb/part1/params.sv
+if [ "$SEED_SET" -eq 1 ]; then
+    SVSEED="$SEED"
+else
+    SVSEED=\$(python3 -c "import re; t=open('tb/part1/params.sv').read(); m=re.search(r'define SEEDVAL[ \\t]+(\\S+)', t); print(m.group(1) if m else 'random')")
+fi
+echo "Using -sv_seed \$SVSEED"
 
 rm -rf "\$WORK"
 "\$VLIB" work
@@ -129,7 +140,7 @@ cd "\$PROJ"
 printf '%s\n' $VLOG_REL > "\$WORK/.vlog_files"
 
 echo "== vsim $TOP =="
-"\$VSIM" -64 -c -work "\$WORK" $TOP -sv_seed $SEED -do 'run -all; quit' -l "\$VSIM_LOG" </dev/null
+"\$VSIM" -64 -c -work "\$WORK" $TOP -sv_seed \$SVSEED -do 'run -all; quit' -l "\$VSIM_LOG" </dev/null
 rc=\$?
 tail -n 30 "\$VSIM_LOG" || true
 exit \$rc
@@ -154,9 +165,12 @@ lines = [ln[2:] if ln.startswith("# ") else (ln[1:] if ln.startswith("#") else l
 keep = []
 on = False
 for ln in lines:
-    if (not on) and (ln.startswith("[INFO]") or ln.startswith("[PASS]") or ln.startswith("[FAIL]") or ln.startswith("====")):
+    s = ln.lstrip()
+    if (not on) and (s.startswith("----") or s.startswith("Starting MAC") or s.startswith("[PASS]") or s.startswith("[FAIL]") or s.startswith("[VALID]") or s.startswith("[INVALID]") or s.startswith("====") or "ERROR:" in ln):
         on = True
     if on:
+        if s.startswith("** Note:") or s.startswith("End time:") or s.startswith("Errors:"):
+            break
         keep.append(ln)
 if keep:
     p.write_text("".join(keep), encoding="utf-8")

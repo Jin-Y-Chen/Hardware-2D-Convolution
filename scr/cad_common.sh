@@ -210,13 +210,16 @@ read_part1_params() {
     P1_WIDTH=8
     P1_ACCW=24
     P1_PIPE=0
+    P1_SEED=random
     [[ -f "$dest" ]] || return 0
     P1_WIDTH=$(sed -n 's/^`define WIDTHVAL //p' "$dest" | tr -d '\r')
     P1_ACCW=$(sed -n 's/^`define ACCWVAL //p' "$dest" | tr -d '\r')
     P1_PIPE=$(sed -n 's/^`define PIPELINEDVAL //p' "$dest" | tr -d '\r')
+    P1_SEED=$(sed -n 's/^`define SEEDVAL //p' "$dest" | tr -d '\r')
     [[ -n "$P1_WIDTH" ]] || P1_WIDTH=8
     [[ -n "$P1_ACCW" ]] || P1_ACCW=24
     [[ -n "$P1_PIPE" ]] || P1_PIPE=0
+    [[ -n "$P1_SEED" ]] || P1_SEED=random
 }
 
 # Reuse one SSH login for vlog/vsim plus the follow-up rsync (no second password).
@@ -271,7 +274,7 @@ RSYNC_TOOL_EXCLUDES=(
 rsync_project_ssh() {
     local name="$1"
     shift
-    rsync -avz \
+    rsync -avz --checksum \
         -e "ssh -o ControlMaster=auto -o ControlPath=${SSH_CTL} -o ControlPersist=10m" \
         --rsync-path="mkdir -p \$HOME/$REMOTE_PROJECT_REL/$name && rsync" \
         "${RSYNC_TOOL_EXCLUDES[@]}" \

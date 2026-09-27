@@ -30,9 +30,8 @@ static void i128_str(acc_t v, char *out, int cap)
     int i;
     int neg = 0;
 
-    if (cap < 2) {
+    if (cap < 2)
         return;
-    }
     if (v == 0) {
         out[0] = '0';
         out[1] = '\0';
@@ -54,17 +53,51 @@ static void i128_str(acc_t v, char *out, int cap)
     out[i] = '\0';
 }
 
+static void i128_hex(acc_t v, char *out, int cap)
+{
+    unsigned __int128 u = (unsigned __int128)v;
+    char tmp[40];
+    int n = 0;
+    int i;
+
+    if (cap < 4)
+        return;
+    if (u == 0) {
+        snprintf(out, (size_t)cap, "0x0");
+        return;
+    }
+    while (u > 0 && n < (int)sizeof(tmp)) {
+        tmp[n++] = "0123456789abcdef"[u & 0xf];
+        u >>= 4;
+    }
+    i = 0;
+    out[i++] = '0';
+    out[i++] = 'x';
+    while (n > 0 && i < cap - 1)
+        out[i++] = tmp[--n];
+    out[i] = '\0';
+}
+
 static void kv_s(const char *name, const char *val)
 {
     printf("  %16s = %18s\n", name, val);
 }
 
-static void kv_i(const char *name, int v)
+static void kv_dec_hex(const char *name, const char *dec, const char *hex)
 {
-    printf("  %16s = %18d\n", name, v);
+    printf("  %16s = %10s (%s)\n", name, dec, hex);
 }
 
-/* Named DUT vs C golden block (fails only). */
+static void kv_i(const char *name, int v)
+{
+    printf("  %16s = %10d (0x%x)\n", name, v, (unsigned)v);
+}
+
+static void kv_ll(const char *name, long long v)
+{
+    printf("  %16s = %10lld (0x%llx)\n", name, v, (unsigned long long)v);
+}
+
 void dump_cycle(long long t, int rst, int init_acc, int valid, int Q,
                 int i0, int i1, int initv,
                 int outv, int exp_d, int expv,
@@ -72,21 +105,23 @@ void dump_cycle(long long t, int rst, int init_acc, int valid, int Q,
                 int pipelined, int fail_n)
 {
     char accs[48];
+    char acch[48];
     char prods[48];
+    char prodh[48];
 
     i128_str(accum, accs, sizeof accs);
+    i128_hex(accum, acch, sizeof acch);
     i128_str(prod_pipe, prods, sizeof prods);
+    i128_hex(prod_pipe, prodh, sizeof prodh);
 
-    (void)fail_n;
     if (fail_n > 0)
-        printf("\n[FAIL] t=%lld | rst=%d init_acc=%d valid=%d Q=%d\n",
+        printf("\n[FAIL] t=%lld | reset=%d init_acc=%d input_valid=%d Q=%d\n",
                t, rst, init_acc, valid, Q);
     else
-        printf("\n[PASS] t=%lld | rst=%d init_acc=%d valid=%d Q=%d\n",
+        printf("\n[PASS] t=%lld | reset=%d init_acc=%d input_valid=%d Q=%d\n",
                t, rst, init_acc, valid, Q);
 
-    printf("\n  --- inputs (sample rising) ---\n");
-    kv_s("clk_edge", "rising (posedge)");
+    printf("\n  --- inputs ---\n");
     kv_i("reset", rst);
     kv_i("init_acc", init_acc);
     kv_i("input_valid", valid);
@@ -95,29 +130,29 @@ void dump_cycle(long long t, int rst, int init_acc, int valid, int Q,
     kv_i("input1", i1);
     kv_i("init_value", initv);
 
-    printf("\n  --- outputs (sample falling) ---\n");
-    kv_s("clk_edge", "falling (negedge)");
+    printf("\n  --- dut ---\n");
+    kv_ll("acc_w", acc_dut);
+
+    printf("\n  --- outputs ---\n");
     kv_i("out", outv);
     kv_i("out_exp_d", exp_d);
-    kv_i("out_exp_next", expv);
-
-    printf("\n  --- dut ---\n");
-    kv_i("acc", (int)acc_dut);
+    kv_i("out_exp", expv);
 
     printf("\n  --- golden (C) ---\n");
-    kv_s("accum", accs);
+    kv_dec_hex("accum", accs, acch);
     kv_i("shift_r1", shift_r1);
     if (pipelined) {
         kv_i("shift_r2", shift_r2);
-        kv_s("prod_pipe", prods);
+        kv_dec_hex("prod_pipe", prods, prodh);
         kv_i("prod_valid", prod_valid);
     }
     fflush(stdout);
 }
 
-void dump_summary(int cycles, int fails, long long last_t, int last_out, int last_exp)
+void dump_summary(int cycles, int fails)
 {
     int passes = cycles - fails;
+    double match = (cycles > 0) ? (100.0 * (double)passes / (double)cycles) : 0.0;
 
     printf("\n========================================\n");
     if (fails == 0)
@@ -127,10 +162,8 @@ void dump_summary(int cycles, int fails, long long last_t, int last_out, int las
     printf("  pass  = %d\n", passes);
     printf("  fail  = %d\n", fails);
     printf("  total = %d\n", cycles);
+    printf("  match = %.1f%%  (%d/%d)\n", match, passes, cycles);
     printf("========================================\n");
-    (void)last_t;
-    (void)last_out;
-    (void)last_exp;
     fflush(stdout);
 }
 

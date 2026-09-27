@@ -1,0 +1,35 @@
+#!/usr/bin/bash
+
+# script to generate the params.sv file based on the command line parameters
+# usage: ./genParams1 [WIDTH] [ACCW] [PIPELINED] [SEED]
+#    SEED is optional (default: keep SEEDVAL in params.sv, or random)
+#    Paste a failing run's Sv_Seed here to reproduce, e.g. 1896683400
+#    where you will replace [WIDTH] [ACCW] and [PIPELINED] with the desired value of
+#    those parameters
+#      - WIDTH is the bitwidth of the MAC inputs and of the MAC output
+#        (2 <= WIDTH < 32)
+#      - ACCW is the bitwidth of the MAC's accumulator
+#        (ACCW must be >= 2*WIDTH and <= 80)
+
+# example: for WIDTH=8, ACCW=24, PIPELINED=0, run: ./genParams1 8 24 0
+# reproduce a seed: ./genParams1 8 24 0 1896683400
+
+if [ $# -ne 3 ] && [ $# -ne 4 ]; then
+    echo "ERROR: incorrect number of parameters given."
+    echo "Usage: ./genParams1 [WIDTH] [ACCW] [PIPELINED] [SEED]"
+    echo "See comments in genParams1 file for more information"
+    exit 1
+fi
+
+SEED="random"
+if [ -f params.sv ]; then
+    OLD=$(sed -n 's/^`define SEEDVAL //p' params.sv | tr -d '\r')
+    [[ -n "$OLD" ]] && SEED="$OLD"
+fi
+[[ $# -eq 4 ]] && SEED="$4"
+
+echo "\`define WIDTHVAL $1" > params.sv
+echo "\`define ACCWVAL $2" >> params.sv
+echo "\`define PIPELINEDVAL $3" >> params.sv
+echo "\`define SEEDVAL $SEED" >> params.sv
+echo "Wrote params.sv (WIDTH=$1 ACCW=$2 PIPELINED=$3 SEED=$SEED)"
