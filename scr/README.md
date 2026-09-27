@@ -102,17 +102,16 @@ Typical cycle:
 
 ```bash
 source scr/env.sh
-link
-vlog part1/mac.sv
-vsim mac_tb
+link          # rtl/ and tb/ (including params.sv)
+vsim mac_tb   # compile + batch sim; transcript -> log/vsim.log
 vsyn --top mac part1/mac.sv
 ```
 
 ```text
 Host  rtl/  --push-->  lab40:~/ese507/project/rtl/
 Host  tb/   --push-->  lab40:~/ese507/project/tb/
-                 then pull (host files are never overwritten)
-                          ├── vlog   ->  log/vlog.log   (also on compile fail)
+                 then pull new filenames only
+                          ├── vlog   ->  log/vlog.log
                           ├── vsim   ->  log/vsim.log
                           └── vsyn   ->  log/vsyn.log
 ```
@@ -138,22 +137,49 @@ vlog part1/mac.sv tb/part1/mac_tb.sv tb/part1/mac_tb.c
 vlog --all
 ```
 
-Edit `tb/part1/params.sv` (`WIDTHVAL` / `ACCWVAL` / `PIPELINEDVAL` / `SEEDVAL`), then `link`, then `vsim`. `SEEDVAL` is `random` or a pasted `Sv_Seed` to reproduce. `vsim` does not copy params.
+### params.sv and seed
+
+Edit `tb/part1/params.sv`, then **`link`** (vsim does not copy this file):
+
+```text
+`define WIDTHVAL 16
+`define ACCWVAL 48
+`define PIPELINEDVAL 0
+`define SEEDVAL random
+```
+
+`SEEDVAL` is `random` or a number from Questa’s `Sv_Seed = …` line so you can replay a failing run. `mac_tb` includes this file; `vsim` / `simParams1` pass it as `-sv_seed`.
+
+On lab40 you can also write the file with `./tb/part1/genParams1 WIDTH ACCW PIPE [SEED]` (keeps the old seed unless you pass a fourth argument).
 
 ### vsim
 
-`vsim` recompiles RTL or `tb/` that are missing from `work/` or newer than the last compile (typical after `link`).
+Batch only (`vsim -c`). Rebuilds `work/` and compiles from `tb/part1` so `` `include "params.sv" `` hits the linked file. RTL is `../../rtl/param_pkg.sv` and `../../rtl/part1/*.sv`. Transcript is stripped of the Questa banner and copied to `log/vsim.log`.
 
 ```bash
 vsim mac_tb
+vsim --seed 1896683400 mac_tb    # optional override of SEEDVAL
 ```
 
-Batch only (`vsim -c`). The course TB transcript is copied to `log/vsim.log`.
+`log/vsim.log` is the course header, then each cycle (`reset`, `init_acc`, `input_valid`, `Q`, `input0`, `input1`, `init_value`, `acc_w`, `out`, `out_exp_d`, `out_exp`, C `accum` / `shift_r1`) with decimal and hex, then:
 
-Change WIDTH/ACCW/PIPELINED, then:
+```text
+[VALID] / [INVALID] summary
+  pass / fail / total
+  match = pass/total %
+```
+
+On lab40, from `tb/part1` (RTL paths are under `../../rtl/`):
 
 ```bash
-./tb/part1/simParams1 8 24 0    # write params.sv only
+./simParams1 16 48 0 0           # batch
+./simParams1 16 48 0 1 &         # GUI
+```
+
+Change widths or seed, then:
+
+```bash
+# edit tb/part1/params.sv  or  ./tb/part1/genParams1 16 48 0 1896683400
 link
 vsim mac_tb
 ```

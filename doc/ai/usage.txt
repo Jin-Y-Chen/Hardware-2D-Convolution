@@ -75,3 +75,26 @@ Date: 9/26, Antother day anther coffee
     Q: *linking my simulation script, ssh_vsim, make sure to push correct parameter to remote and pull simulation log to host
 
     R: *written and modify ssh_vsim to reference simParams1, which was encahned to display all signal
+
+Date: 9/27, So close to the MAC, >> "I ignored so much reading/hint in the manual huh" >> IS DONE
+    ---------------------------------------------------
+    Q: *Asking for specific edge cases: how to assign out = 0 initally without causing double assignment
+
+    R: Q_reg is uninitialized, shifting cause Unknown
+
+    ---------------------------------------------------
+    Q: *Asking for specific edge cases: the MAC output without saturation is wrong for init_acc = 1
+
+    R: init_acc does not load Q_reg, Q_reg stay at the value from the last input_valid
+
+    ---------------------------------------------------
+    Q: *Asking for specific edge cases: the MAC output is not shifting correctly
+
+    R: if both input_valid and init_acc is assert the Q_reg is loaded with Q
+
+    ---------------------------------------------------
+    Q: *Have the accumaulator and Q_reg in the same register, if statement is bit janky
+
+    R: Split accumaulator and Q into two seperate register, similatr to the layout
+
+

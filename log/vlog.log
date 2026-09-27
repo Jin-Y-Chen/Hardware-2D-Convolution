@@ -1,5 +1,5 @@
 QuestaSim-64 vlog 2023.4_3 Compiler 2024.02 Feb 17 2024
-Start time: 05:10:28 on Sep 27,2026
+Start time: 15:02:51 on Sep 27,2026
 vlog -sv -work /home/home5/jinchen/ese507/project/work "+acc" "+incdir+." "+incdir+../../rtl" "+incdir+../../rtl/part1" ../../rtl/param_pkg.sv ../../rtl/part1/mac.sv mac_tb.sv mac_tb.c -l /home/home5/jinchen/ese507/project/rtl/vlog_mac.log 
 -- Compiling package param_pkg
 -- Compiling package mac_sv_unit
@@ -11,5 +11,5 @@ vlog -sv -work /home/home5/jinchen/ese507/project/work "+acc" "+incdir+." "+incd
 Top level modules:
 	mac_tb
 -- Compiling DPI/PLI C file mac_tb.c
-End time: 05:10:28 on Sep 27,2026, Elapsed time: 0:00:00
+End time: 15:02:51 on Sep 27,2026, Elapsed time: 0:00:00
 Errors: 0, Warnings: 0
