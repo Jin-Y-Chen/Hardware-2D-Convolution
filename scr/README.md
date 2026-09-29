@@ -92,7 +92,7 @@ Without sourcing, run `./scr/ssh_link`.
 scr/
 ├── env.sh
 ├── cad_common.sh      shared lab40 / CAD setup
-├── ssh_link           host-master rtl/ and tb/  (command: link)
+├── ssh_link           rtl/ tb/ host-master; log/ from lab40  (command: link)
 ├── ssh_vlog           Questa compile  (command: vlog)
 ├── ssh_vsim           Questa simulate (command: vsim)
 └── ssh_vsyn           Design Compiler (command: vsyn)
@@ -102,8 +102,8 @@ Typical cycle:
 
 ```bash
 source scr/env.sh
-link          # rtl/ and tb/ (including params.sv)
-vsim mac_tb   # compile + batch sim; transcript -> log/vsim.log
+link          # rtl/, tb/, log/ (including params.sv)
+vsim mac_tb_mod mac_pipe   # or: vsim mac_tb mac
 vsyn --top mac part1/mac.sv
 ```
 
@@ -111,20 +111,20 @@ vsyn --top mac part1/mac.sv
 Host  rtl/  --push-->  lab40:~/ese507/project/rtl/
 Host  tb/   --push-->  lab40:~/ese507/project/tb/
                  then pull new filenames only
-                          ├── vlog   ->  log/vlog.log
-                          ├── vsim   ->  log/vsim.log
-                          └── vsyn   ->  log/vsyn.log
+lab40:~/ese507/project/log/  --pull-->  Host log/   (overwrite transcripts)
 ```
 
 ### link
 
-Host is master.
+`rtl/` and `tb/`: host is master.
 
 * **Push:** same-name files on lab40 are replaced with the host copy
 * **Pull:** only files with a new / different name (host files are never overwritten)
 * Skips `tb/README.md`
-* Never copies `work/`, waves, transcripts, or other tool junk
+* Never copies `work/`, waves, or other tool junk from `rtl/` / `tb/`
 * No `--delete` on push, so a new file created on lab40 can be pulled
+
+`log/`: lab40 is master (host only reads). `link` does not push logs; it overwrites local `log/*.log` from `~/ese507/project/log/`. Skips `log/README.md`.
 
 ### vlog
 
@@ -154,11 +154,14 @@ On lab40 you can also write the file with `./tb/part1/genParams1 WIDTH ACCW PIPE
 
 ### vsim
 
-Batch only (`vsim -c`). Rebuilds `work/` and compiles from `tb/part1` so `` `include "params.sv" `` hits the linked file. RTL is `../../rtl/param_pkg.sv` and `../../rtl/part1/*.sv`. Transcript is stripped of the Questa banner and copied to `log/vsim.log`.
+Batch only (`vsim -c`). First argument is the testbench, second is the DUT. Remote `PIPELINEDVAL` is set from the DUT (`mac` → 0, `mac_pipe` → 1).
 
 ```bash
-vsim mac_tb
-vsim --seed 1896683400 mac_tb    # optional override of SEEDVAL
+vsim                        # list tops and DUTs
+vsim mac_tb mac
+vsim mac_tb mac_pipe
+vsim mac_tb_mod mac
+vsim mac_tb_mod mac_pipe
 ```
 
 `log/vsim.log` is the course header, then each cycle (`reset`, `init_acc`, `input_valid`, `Q`, `input0`, `input1`, `init_value`, `acc_w`, `out`, `out_exp_d`, `out_exp`, C `accum` / `shift_r1`) with decimal and hex, then:
@@ -181,7 +184,7 @@ Change widths or seed, then:
 ```bash
 # edit tb/part1/params.sv  or  ./tb/part1/genParams1 16 48 0 1896683400
 link
-vsim mac_tb
+vsim mac_tb_mod mac
 ```
 
 ### vsyn

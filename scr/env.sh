@@ -3,7 +3,7 @@
 #   link   vlog   vsim   vsyn
 # Functions (not aliases) so they override /usr/bin/link and other PATH tools.
 # Drop leftover aliases from an older env.sh — bash cannot redefine an alias as a function.
-unalias link vlog vsim vsyn sync sim syn 2>/dev/null || true
+unalias link vlog vsim vsyn 2>/dev/null || true
 
 _ese507_root() {
     git rev-parse --show-toplevel 2>/dev/null

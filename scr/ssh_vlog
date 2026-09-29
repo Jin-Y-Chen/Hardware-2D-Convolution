@@ -43,10 +43,7 @@ done
 resolve_src_files
 mkdir -p "$LOCAL_LOG"
 
-echo "ssh_vlog"
-echo "Host : $REMOTE_USER@$REMOTE_HOST"
-echo "Files: $FILE_LIST"
-echo
+echo "vlog  $REMOTE_USER@$REMOTE_HOST  $FILE_LIST"
 
 set +e
 ssh_lab40 <<REMOTE
@@ -57,30 +54,31 @@ if [ -z "\${VLOG:-}" ] || [ ! -x "\$VLOG" ]; then
 fi
 
 PROJ="\$HOME/$REMOTE_PROJECT_REL"
-RTL="\$PROJ/rtl"
-LOG="\$RTL/vlog_mac.log"
+LOGDIR="\$PROJ/log"
+LOG="\$LOGDIR/vlog.log"
+mkdir -p "\$LOGDIR"
+rm -f "\$PROJ/rtl/vlog_mac.log" "\$PROJ/rtl/vsim_mac.log"
 cd "\$PROJ"
 "\$VLIB" work >/dev/null 2>&1 || true
 
 FILES="$FILE_LIST"
-echo "== vlog =="
-echo "files: \$FILES"
 "\$VLOG" -64 -sv +acc +incdir+tb/part1 +incdir+rtl +incdir+rtl/part1 \$FILES -l "\$LOG"
 
 if grep -q "Errors: 0" "\$LOG"; then
-    printf '%s\n' \$FILES > "\$PROJ/work/.vlog_files"
-    echo "COMPILE OK (Errors: 0)"
+    printf '%s\n' \$FILES | tee "\$PROJ/work/.vlog_files" > "\$LOGDIR/vlog_files"
+    echo "vlog  OK"
 else
-    echo "COMPILE FAILED" >&2
+    echo "vlog  FAILED" >&2
     exit 1
 fi
 REMOTE
 vlog_rc=$?
 set -e
 
-echo
-rsync_from_remote "~/$REMOTE_RTL_REL/vlog_mac.log" "$LOCAL_LOG/vlog.log" || true
-if [[ -f "$LOCAL_LOG/vlog.log" ]]; then
-    echo "Local copy: $LOCAL_LOG/vlog.log"
+rsync_from_remote "~/$REMOTE_LOG_REL/vlog.log" "$LOCAL_LOG/vlog.log" || true
+rsync_from_remote "~/$REMOTE_LOG_REL/vlog_files" "$LOCAL_LOG/vlog_files" || true
+if [[ ! -f "$LOCAL_LOG/vlog_files" ]]; then
+    printf '%s\n' $FILE_LIST > "$LOCAL_LOG/vlog_files"
 fi
+[[ -f "$LOCAL_LOG/vlog.log" ]] && echo "log   $LOCAL_LOG/vlog.log"
 exit "$vlog_rc"

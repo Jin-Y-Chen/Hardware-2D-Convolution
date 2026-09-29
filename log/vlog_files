@@ -1,0 +1,4 @@
+rtl/param_pkg.sv
+rtl/part1/mac.sv
+tb/part1/mac_tb_mod.sv
+tb/part1/mac_tb_mod.c

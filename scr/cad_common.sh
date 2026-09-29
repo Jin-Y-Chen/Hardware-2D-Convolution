@@ -6,6 +6,7 @@ REMOTE_HOST="lab40.ece.stonybrook.edu"
 REMOTE_PROJECT_REL="ese507/project"
 REMOTE_RTL_REL="ese507/project/rtl"
 REMOTE_TB_REL="ese507/project/tb"
+REMOTE_LOG_REL="ese507/project/log"
 
 CAD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$CAD_DIR/.." && pwd)"
@@ -53,6 +54,44 @@ list_tb() {
     [[ -d "$LOCAL_TB" ]] || return 0
     find "$LOCAL_TB" \( -name '*.sv' -o -name '*.c' \) ! -name 'params.sv' -print \
         | sed "s|^$LOCAL_TB/||" | sort
+}
+
+# DUT RTL that shares mac_tb (basename without .sv)
+list_duts() {
+    local f rel base
+    [[ -d "$LOCAL_RTL" ]] || return 0
+    while IFS= read -r f; do
+        rel="${f#"$LOCAL_RTL"/}"
+        base="${rel##*/}"
+        base="${base%.sv}"
+        printf '%s  rtl/%s\n' "$base" "$rel"
+    done < <(find "$LOCAL_RTL" \( -name 'mac.sv' -o -name 'mac_pipe.sv' \) -print | sort)
+}
+
+# Designs recorded by the last successful vlog (log/vlog_files).
+designs_from_vlog() {
+    local f
+    [[ -f "$LOCAL_LOG/vlog_files" ]] || return 0
+    while IFS= read -r f; do
+        f="${f//$'\r'/}"
+        [[ -n "$f" ]] || continue
+        case "$f" in
+            */mac.sv|mac.sv) echo "mac  $f" ;;
+            */mac_pipe.sv|mac_pipe.sv) echo "mac_pipe  $f" ;;
+        esac
+    done < "$LOCAL_LOG/vlog_files"
+}
+
+# Elaboration tops: tb/**/*_tb.sv → module name + path
+list_tops() {
+    local f rel base
+    [[ -d "$LOCAL_TB" ]] || return 0
+    while IFS= read -r f; do
+        rel="${f#"$LOCAL_TB"/}"
+        base="${rel##*/}"
+        base="${base%.sv}"
+        printf '%s  tb/%s\n' "$base" "$rel"
+    done < <(find "$LOCAL_TB" \( -name '*_tb.sv' -o -name '*_tb_mod.sv' \) -print | sort)
 }
 
 # Project-relative paths: rtl/part1/mac.sv  tb/part1/mac_tb.sv
@@ -268,13 +307,14 @@ RSYNC_TOOL_EXCLUDES=(
     --exclude '_info'
     --exclude '_vmake'
     --exclude '_lib*'
+    --exclude '.nfs*'
 )
 
-# Two-way folder under ~/ese507/project/<name>  (rtl or tb).
+# Two-way folder under ~/ese507/project/<name>  (rtl, tb, or log).
 rsync_project_ssh() {
     local name="$1"
     shift
-    rsync -avz --checksum \
+    rsync -az --checksum --out-format='%n' \
         -e "ssh -o ControlMaster=auto -o ControlPath=${SSH_CTL} -o ControlPersist=10m" \
         --rsync-path="mkdir -p \$HOME/$REMOTE_PROJECT_REL/$name && rsync" \
         "${RSYNC_TOOL_EXCLUDES[@]}" \
@@ -296,13 +336,10 @@ if [ ! -f "$HOME/ese507setup-bash" ] && [ -f /home/home4/pmilder/ese507/ese507se
 fi
 if [ -f "$HOME/ese507setup-bash" ]; then
     . "$HOME/ese507setup-bash"
-    echo "Sourced: $HOME/ese507setup-bash"
 fi
 export PATH="/usr/local/mgc/questasim/bin:/usr/local/synopsys/syn/U-2022.12-SP7-2/bin:$PATH"
 ls /usr/local/mgc /usr/local/mgc/questasim /usr/local/mgc/questasim/bin >/dev/null 2>&1 || true
 set -u
-
-echo "host: $(hostname)"
 
 VLOG=""
 for c in \
@@ -323,7 +360,6 @@ if [ -n "$VLOG" ] && [ -x "$VLOG" ]; then
     MGC=$(dirname "$VLOG")
     VLIB="$MGC/vlib"
     VSIM="$MGC/vsim"
-    echo "Using vlog: $VLOG"
 fi
 
 DC_SHELL=""
@@ -338,9 +374,6 @@ do
 done
 if [ -z "$DC_SHELL" ]; then
     DC_SHELL=$(command -v dc_shell 2>/dev/null || true)
-fi
-if [ -n "$DC_SHELL" ]; then
-    echo "Using dc_shell: $DC_SHELL"
 fi
 BOOT
 )

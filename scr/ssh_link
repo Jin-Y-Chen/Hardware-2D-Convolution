@@ -1,30 +1,36 @@
 #!/usr/bin/env bash
-# Host-master link of rtl/ and tb/ with lab40.
-#   1) push host -> remote: same-name files take the host copy (no --delete)
-#   2) pull remote -> host: only new / different names (host files kept)
-# Tool junk (work/, waves, transcripts, Questa/DC logs) is never copied.
+# Link rtl/, tb/, and log/ with lab40.
+#   rtl/ tb/: host is master
+#     1) push host -> remote: same-name files take the host copy (no --delete)
+#     2) pull remote -> host: only new / different names (host files kept)
+#   log/: remote is master (CAD writes on lab40; host only reads)
+#     pull remote -> host and overwrite local transcripts (no push)
+# Tool junk (work/, waves, Questa leftovers in rtl/tb) is never copied.
 #   link
 
 set -euo pipefail
 # shellcheck source=cad_common.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cad_common.sh"
 
-# extras[name] = extra rsync args (e.g. skip tb/README.md)
 declare -A TREE_EXTRAS
 TREE_EXTRAS[rtl]=""
 TREE_EXTRAS[tb]="--exclude /README.md"
+TREE_EXTRAS[log]="--exclude /README.md"
 
-report_xfer() {
-    local out="$1"
-    local empty_msg="$2"
-    echo "$out"
-    if ! echo "$out" | grep -qE '[.](sv|c|vh|do|tcl)$'; then
-        echo "$empty_msg"
+# rsync --out-format='%n' → one path per line (skip dir-only "./")
+xfer_summary() {
+    local out="$1" empty="$2"
+    local names
+    names=$(printf '%s\n' "$out" | grep -E '[^/]$' | grep -v '^[.]/*$' | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+    if [[ -n "$names" ]]; then
+        echo "$names"
+    else
+        echo "$empty"
     fi
 }
 
 sync_one() {
-    local name="$1" mode="$2"
+    local name="$1" mode="$2" arrow="$3" empty="$4"
     local local_dir="$PROJECT_ROOT/$name"
     local remote="$REMOTE_USER@$REMOTE_HOST:~/$REMOTE_PROJECT_REL/$name/"
     # shellcheck disable=SC2206
@@ -32,29 +38,19 @@ sync_one() {
     local out
 
     mkdir -p "$local_dir"
-
-    echo "-- $name/"
     if [[ "$mode" == push ]]; then
         out=$(rsync_project_ssh "$name" "${extras[@]}" "$local_dir/" "$remote")
-        report_xfer "$out" "(already up to date)"
+    elif [[ "$mode" == pull-update ]]; then
+        out=$(rsync_project_ssh "$name" "${extras[@]}" "$remote" "$local_dir/" || true)
     else
         out=$(rsync_project_ssh "$name" "${extras[@]}" --ignore-existing "$remote" "$local_dir/" || true)
-        report_xfer "$out" "(no new files from lab40)"
     fi
-    echo
+    printf '  %-4s %s  %s\n' "$name/" "$arrow" "$(xfer_summary "$out" "$empty")"
 }
 
-echo "Link  host -> lab40  ~/$REMOTE_PROJECT_REL/{rtl,tb}  (host is master)"
-echo "Host : $PROJECT_ROOT/{rtl,tb}/"
-echo "Lab40: $REMOTE_USER@$REMOTE_HOST:~/$REMOTE_PROJECT_REL/{rtl,tb}/"
-echo
-
-echo "== push this computer -> lab40 =="
-sync_one rtl push
-sync_one tb push
-
-echo "== pull lab40 -> this computer (new names only) =="
-sync_one rtl pull
-sync_one tb pull
-
-echo "Link complete."
+echo "link  $REMOTE_USER@$REMOTE_HOST:~/$REMOTE_PROJECT_REL"
+sync_one rtl push        "->"  "up to date"
+sync_one tb  push        "->"  "up to date"
+sync_one rtl pull        "<-"  "no new files"
+sync_one tb  pull        "<-"  "no new files"
+sync_one log pull-update "<-"  "up to date"

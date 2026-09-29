@@ -5,8 +5,8 @@
 
 // To use this testbench:
 // Compile it and your accompanying design with:
-//   vlog -64 +acc mac_tb.sv mac_tb.c [add your other .sv files to simulate here]
-//   vsim -64 -c mac_tb -sv_seed random
+//   vlog -64 +acc mac_tb_mod.sv mac_tb_mod.c [add your other .sv files to simulate here]
+//   vsim -64 -c mac_tb_mod -sv_seed random
 //      [options]:
 //       - If you want to run in GUI mode, remove -c
 
@@ -15,7 +15,7 @@
 
 // Please see the project description for a high-level description of this testbench and how to run it. Comments are also included throughout to help understand how the testbench works.
 
-// Import the C functions (from mac_tb.c) that will calculate the expected outputs of the MAC unit, for pipelined and unpipelined MACs.
+// Import the C functions (from mac_tb_mod.c) that will calculate the expected outputs of the MAC unit, for pipelined and unpipelined MACs.
 import "DPI-C" function void sim_cycle_pipelined(input int input0, input int input1, input int init_value,
                                                  input bit input_valid, input bit init_acc, input bit reset,
                                                  input int Q, input int WIDTH, input int ACCW,
@@ -29,13 +29,8 @@ import "DPI-C" function void dump_cycle(input longint t,
                                         input int i0, input int i1, input int initv,
                                         input int outv, input int exp_d, input int expv,
                                         input longint acc_dut,
-                                        input longint gold_acc, input int gold_s1,
-                                        input int gold_s2, input int gold_pv, input longint gold_prod,
                                         input int pipelined, input int fail_n);
 import "DPI-C" function void dump_summary(input int cycles, input int fails);
-import "DPI-C" function void peek_golden(output longint gold_acc, output int gold_s1,
-                                         output int gold_s2, output int gold_pv,
-                                         output longint gold_prod);
 
 // Include the params.sv file, which holds the parameter values
 `include "params.sv"
@@ -103,7 +98,7 @@ endclass
 
 
 
-module mac_tb();
+module mac_tb_mod();
 
     parameter TESTS = 10000;             // the number of cycles of input to simulate
     parameter WIDTH = `WIDTHVAL;         // the number of bits in the inputs and the output
@@ -124,7 +119,7 @@ module mac_tb();
     generate
         if (PIPELINED == 1) begin : g_pipe
             mac_pipe #(WIDTH, ACCW) dut(input0, input1, init_value, Q, out, clk, reset, init_acc, input_valid);
-            assign acc_w = dut.next_value;
+            assign acc_w = dut.post_accum;
         end else begin : g_mac
             mac #(WIDTH, ACCW) dut(input0, input1, init_value, Q, out, clk, reset, init_acc, input_valid);
             assign acc_w = dut.acc;
@@ -177,22 +172,7 @@ module mac_tb();
     // posedge instead would leave the previous cycle's Q value still
     // applied to the DUT, which hides bugs in how Q is aligned with
     // the accumulator.
-    task dump_at_t(input int fail_n, input longint gold_acc, input int gold_s1,
-                   input int gold_s2, input int gold_pv, input longint gold_prod);
-        dump_cycle(longint'($time), int'(reset), int'(init_acc), int'(input_valid), int'(Q),
-                   int'(input0), int'(input1), int'(init_value),
-                   int'(out), int'(out_exp_d), int'(out_exp),
-                   longint'(acc_w), gold_acc, gold_s1, gold_s2, gold_pv, gold_prod,
-                   PIPELINED, fail_n);
-    endtask
-
     task run_cycle();
-        longint gold_acc, gold_prod;
-        int gold_s1, gold_s2, gold_pv;
-
-        // C state from last clock — same instant as DUT acc at the coming negedge
-        peek_golden(gold_acc, gold_s1, gold_s2, gold_pv, gold_prod);
-
         input0 = td.input0;
         input1 = td.input1;
         init_value = td.init_value;
@@ -200,29 +180,36 @@ module mac_tb();
         init_acc = td.init_acc;
         reset = td.reset;
 
-        // Drive a new Q every cycle
         Q = td.Q;
 
-        if (PIPELINED == 1)
-            sim_cycle_pipelined(td.input0, td.input1, td.init_value, td.input_valid, td.init_acc, td.reset, td.Q, WIDTH, ACCW, out_exp);
-        else
-            sim_cycle_unpipelined(td.input0, td.input1, td.init_value, td.input_valid, td.init_acc, td.reset, td.Q, WIDTH, ACCW, out_exp);
-
-        // Mid-cycle: check the output that the previous cycle predicted
+        // Sample at this t (negedge) before stepping the C model, so the dump
+        // matches DUT acc / C accum at the same time. Check is unchanged.
         @(negedge clk);
         cycles = cycles + 1;
 
         if (out !== out_exp_d) begin
             errors = errors+1;
-            dump_at_t(errors, gold_acc, gold_s1, gold_s2, gold_pv, gold_prod);
+            $display($time,, "ERROR: MAC output = %d; expected value = %d", out, out_exp_d);
+            dump_cycle(longint'($time), int'(reset), int'(init_acc), int'(input_valid), int'(Q),
+                       int'(input0), int'(input1), int'(init_value),
+                       int'(out), int'(out_exp_d), int'(out_exp_d),
+                       longint'(acc_w), PIPELINED, errors);
             if (errors >= 100) begin
                 $display($time,, "100 errors reached. Stopping simulation early.");
                 dump_summary(cycles, errors);
                 $finish;
             end
         end else if (TRACE) begin
-            dump_at_t(0, gold_acc, gold_s1, gold_s2, gold_pv, gold_prod);
+            dump_cycle(longint'($time), int'(reset), int'(init_acc), int'(input_valid), int'(Q),
+                       int'(input0), int'(input1), int'(init_value),
+                       int'(out), int'(out_exp_d), int'(out_exp_d),
+                       longint'(acc_w), PIPELINED, 0);
         end
+
+        if (PIPELINED == 1)
+            sim_cycle_pipelined(td.input0, td.input1, td.init_value, td.input_valid, td.init_acc, td.reset, td.Q, WIDTH, ACCW, out_exp);
+        else
+            sim_cycle_unpipelined(td.input0, td.input1, td.init_value, td.input_valid, td.init_acc, td.reset, td.Q, WIDTH, ACCW, out_exp);
 
         out_exp_d = out_exp;
 
@@ -241,12 +228,10 @@ module mac_tb();
         input_valid = 0; init_acc = 0; reset = 1;
         out_exp_d = 0;
         #0;
-        begin
-            longint gold_acc, gold_prod;
-            int gold_s1, gold_s2, gold_pv;
-            peek_golden(gold_acc, gold_s1, gold_s2, gold_pv, gold_prod);
-            dump_at_t(0, gold_acc, gold_s1, gold_s2, gold_pv, gold_prod);
-        end
+        dump_cycle(0, int'(reset), int'(init_acc), int'(input_valid), int'(Q),
+                   int'(input0), int'(input1), int'(init_value),
+                   int'(out), int'(out_exp_d), 0,
+                   longint'(acc_w), PIPELINED, 0);
 
         @(posedge clk);
         #1;

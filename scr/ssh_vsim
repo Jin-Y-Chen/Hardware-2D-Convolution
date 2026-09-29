@@ -1,74 +1,115 @@
 #!/usr/bin/env bash
-# Simulate on lab40. Recompiles RTL/TB that are newer than work/ (e.g. after link).
-#   vsim mac_tb
-#   vsim --seed 1896683400 mac_tb
-# Transcript: log/vsim.log
+# Batch sim on lab40.  Usage:  vsim <top> <dut>
+#   top  mac_tb | mac_tb_mod     (pairs with the same-name .c)
+#   dut  mac    | mac_pipe       (sets PIPELINEDVAL 0 / 1)
+# Transcript: log/vsim.log  (same bytes on host and lab40)
 
 set -euo pipefail
 # shellcheck source=cad_common.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cad_common.sh"
 
-usage() {
+show_menu() {
     cat <<'EOF'
-Usage:  vsim [options] [<top>] [<file> ...]
+vsim  <top>  <dut>
 
-Recompiles RTL or tb/ that are missing from work/ or newer than the
-last compile (link updates timestamps). Creates work/ if needed.
+  top   mac_tb       tb/part1/mac_tb.sv      + mac_tb.c       (course)
+        mac_tb_mod   tb/part1/mac_tb_mod.sv  + mac_tb_mod.c   (trace dump)
 
-  link          # push rtl/ and tb/ (including params.sv)
-  vsim mac_tb   # compile and run only; does not copy params.sv
+  dut   mac          rtl/part1/mac.sv        PIPELINEDVAL=0
+        mac_pipe     rtl/part1/mac_pipe.sv   PIPELINEDVAL=1
 
-  -h, --help
-  -l, --list
-  -a, --all              require last vlog to have compiled every rtl source
-  -t, --top NAME         elaboration top (default: mac_tb)
-  -s, --seed N           -sv_seed (default: SEEDVAL in params.sv)
+  vsim mac_tb mac
+  vsim mac_tb mac_pipe
+  vsim mac_tb_mod mac
+  vsim mac_tb_mod mac_pipe
+  vsim --seed 1896683400 mac_tb_mod mac_pipe
+
+  -h, --help     this text
+  -l, --list     same as no args
+  -s, --seed N   -sv_seed (default: SEEDVAL in params.sv)
 EOF
 }
 
-WANT_ALL=0
-TOP="mac_tb"
+need() {
+    echo "$1" >&2
+    echo >&2
+    show_menu >&2
+    exit 2
+}
+
+# dut name → rtl/part1/<name>.sv
+dut_rtl() {
+    local name="$1"
+    name="${name#./}"
+    name="${name%.sv}"
+    name="${name##*/}"
+    case "$name" in
+        mac|mac_pipe)
+            [[ -f "$LOCAL_RTL/part1/${name}.sv" ]] || return 1
+            echo "$name" "rtl/part1/${name}.sv"
+            ;;
+        *) return 1 ;;
+    esac
+}
+
+TOP=""
+DUT=""
 SEED=""
 SEED_SET=0
 SELECTED=()
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -h|--help) usage; exit 0 ;;
-        -l|--list) echo "Sources:"; list_src; exit 0 ;;
-        -a|--all)  WANT_ALL=1; shift ;;
-        -t|--top)  TOP="$2"; shift 2 ;;
-        -s|--seed)   SEED="$2"; SEED_SET=1; shift 2 ;;
-        --) shift; SELECTED+=("$@"); break ;;
-        -*) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+        -h|--help) show_menu; exit 0 ;;
+        -l|--list) show_menu; exit 0 ;;
+        -s|--seed)
+            [[ $# -ge 2 ]] || need "vsim --seed needs a value."
+            SEED="$2"
+            SEED_SET=1
+            shift 2
+            ;;
+        -*) need "Unknown option: $1" ;;
         *)
-            if [[ "$1" == *.sv || "$1" == *.c || "$1" == */* ]]; then
-                SELECTED+=("$1")
-            else
+            if [[ -z "$TOP" ]]; then
                 TOP="$1"
+            elif [[ -z "$DUT" ]]; then
+                DUT="$1"
+            else
+                need "Too many arguments."
             fi
             shift
             ;;
     esac
 done
 
-if [[ ${#SELECTED[@]} -eq 0 && "$WANT_ALL" -eq 0 ]]; then
-    if [[ -f "$LOCAL_RTL/part1/${TOP}.sv" ]]; then
-        SELECTED=("rtl/part1/${TOP}.sv")
-    elif [[ -f "$LOCAL_RTL/part1/mac.sv" ]]; then
-        SELECTED=("rtl/part1/mac.sv")
-    fi
-    if [[ "$TOP" == mac_tb && -f "$LOCAL_TB/part1/mac_tb.sv" ]]; then
-        SELECTED+=("tb/part1/mac_tb.sv")
-    fi
-    [[ -f "$LOCAL_TB/part1/mac_tb.c" ]] && SELECTED+=("tb/part1/mac_tb.c")
-fi
+[[ -n "$TOP" ]] || need "Pick a testbench and a DUT."
+
+case "$TOP" in
+    mac_tb|mac_tb_mod) ;;
+    mac|mac_pipe) need "First argument is the testbench. Try:  vsim mac_tb $TOP" ;;
+    *)            need "Unknown top: $TOP" ;;
+esac
+[[ -f "$LOCAL_TB/part1/${TOP}.sv" ]] || need "Missing tb/part1/${TOP}.sv — run link after adding the course TB."
+
+[[ -n "$DUT" ]] || need "Pick a DUT after the testbench."
+resolved="$(dut_rtl "$DUT" || true)"
+[[ -n "$resolved" ]] || need "Unknown DUT: $DUT"
+DUT="${resolved%% *}"
+DUT_FILE="${resolved#* }"
+
+SELECTED=("$DUT_FILE" "tb/part1/${TOP}.sv")
+[[ -f "$LOCAL_TB/part1/${TOP}.c" ]] && SELECTED+=("tb/part1/${TOP}.c")
 
 resolve_src_files
 if [[ -f "$LOCAL_RTL/param_pkg.sv" && " $FILE_LIST " != *" rtl/param_pkg.sv "* ]]; then
     FILE_LIST="rtl/param_pkg.sv $FILE_LIST"
 fi
-# Include file is already on lab40 from link. Compile from tb/part1 so
-# the TB include of params.sv is not a leftover at the project root.
+
+# TB generate if (PIPELINED) picks mac vs mac_pipe.
+DUT_PIPE=0
+[[ "$DUT" == mac_pipe ]] && DUT_PIPE=1
+
+# Compile from tb/part1 so `include "params.sv" is the linked file, not a leftover.
 VLOG_REL=""
 for f in $FILE_LIST; do
     [[ "$f" == *params.sv ]] && continue
@@ -78,103 +119,109 @@ for f in $FILE_LIST; do
         VLOG_REL="${VLOG_REL:+$VLOG_REL }../../$f"
     fi
 done
+
 mkdir -p "$LOCAL_LOG"
+printf '%s\n' $FILE_LIST > "$LOCAL_LOG/vlog_files"
 rm -f "$LOCAL_LOG/vsim.log"
 
-echo "ssh_vsim"
-echo "Host : $REMOTE_USER@$REMOTE_HOST"
-echo "Top  : $TOP"
 if [[ "$SEED_SET" -eq 0 ]]; then
-    echo "Seed : SEEDVAL in tb/part1/params.sv (after link)"
+    echo "vsim  $REMOTE_USER@$REMOTE_HOST  $TOP  $DUT  PIPELINEDVAL=$DUT_PIPE  seed=params.sv"
 else
-    echo "Seed : $SEED"
+    echo "vsim  $REMOTE_USER@$REMOTE_HOST  $TOP  $DUT  PIPELINEDVAL=$DUT_PIPE  seed=$SEED"
 fi
-echo "Need : $FILE_LIST"
-echo
+echo "files $FILE_LIST"
 
+# --- reach lab40 ---
 set +e
 ssh_lab40 <<REMOTE
 $REMOTE_CAD_BOOTSTRAP
+
+# --- on lab40: CAD env, paths, leftover cleanup ---
 if [ -z "\${VSIM:-}" ] || [ ! -x "\$VSIM" ]; then
     echo "ERROR: vsim not found on this host." >&2
+    exit 1
+fi
+if [ -z "\${VLOG:-}" ] || [ ! -x "\$VLOG" ]; then
+    echo "ERROR: vlog not found." >&2
     exit 1
 fi
 
 PROJ="\$HOME/$REMOTE_PROJECT_REL"
 WORK="\$PROJ/work"
-VLOG_LOG="\$PROJ/rtl/vlog_mac.log"
-VSIM_LOG="\$PROJ/rtl/vsim_mac.log"
+LOGDIR="\$PROJ/log"
+VLOG_LOG="\$LOGDIR/vlog.log"
+VSIM_LOG="\$LOGDIR/vsim.log"
+mkdir -p "\$LOGDIR"
 cd "\$PROJ"
-rm -f "\$VSIM_LOG" params.sv rtl/params.sv rtl/part1/params.sv
+rm -f "\$VSIM_LOG" "\$PROJ/rtl/vlog_mac.log" "\$PROJ/rtl/vsim_mac.log" \
+    params.sv rtl/params.sv rtl/part1/params.sv
 
-if [ -z "\${VLOG:-}" ] || [ ! -x "\$VLOG" ]; then
-    echo "ERROR: vlog not found." >&2
-    exit 1
-fi
 if [ ! -f tb/part1/params.sv ]; then
     echo "ERROR: tb/part1/params.sv missing on lab40. Run link first." >&2
     exit 1
 fi
-echo "== tb/part1/params.sv (included) =="
-cat tb/part1/params.sv
+
+# Match generate in the TB; do not change the host params.sv.
+python3 -c "import pathlib,re; p=pathlib.Path('tb/part1/params.sv'); t=p.read_text(); t=re.sub(r'(define PIPELINEDVAL)[ \\t]+\\S+', r'\\1 $DUT_PIPE', t); p.write_text(t)"
+
 if [ "$SEED_SET" -eq 1 ]; then
     SVSEED="$SEED"
 else
     SVSEED=\$(python3 -c "import re; t=open('tb/part1/params.sv').read(); m=re.search(r'define SEEDVAL[ \\t]+(\\S+)', t); print(m.group(1) if m else 'random')")
 fi
-echo "Using -sv_seed \$SVSEED"
+echo "params \$(grep define tb/part1/params.sv | tr -s '[:space:]' ' ' | paste -sd' ' -)"
+echo "seed   \$SVSEED"
 
+# --- on lab40: compile the selected TB + DUT into work/ ---
 rm -rf "\$WORK"
 "\$VLIB" work
-echo "== vlog (cwd tb/part1) =="
-echo "files: $VLOG_REL"
 cd tb/part1
 "\$VLOG" -64 -sv -work "\$WORK" +acc +incdir+. +incdir+../../rtl +incdir+../../rtl/part1 \
     $VLOG_REL -l "\$VLOG_LOG"
 if ! grep -q "Errors: 0" "\$VLOG_LOG"; then
     tail -n 12 "\$VLOG_LOG"
-    echo "COMPILE FAILED" >&2
+    echo "vlog  FAILED" >&2
     exit 1
 fi
+echo "vlog  OK"
 cd "\$PROJ"
-printf '%s\n' $VLOG_REL > "\$WORK/.vlog_files"
 
-echo "== vsim $TOP =="
+# --- on lab40: simulate and write transcripts under ~/ese507/project/log/ ---
+printf '%s\n' $FILE_LIST > "\$LOGDIR/vlog_files"
 "\$VSIM" -64 -c -work "\$WORK" $TOP -sv_seed \$SVSEED -do 'run -all; quit' -l "\$VSIM_LOG" </dev/null
 rc=\$?
+
+# Drop the Questa banner so host and lab40 log/vsim.log stay identical (link no-op).
+python3 -c 'import pathlib,sys
+p=pathlib.Path(sys.argv[1])
+raw=p.read_text(encoding="utf-8",errors="replace")
+out=[]; on=False
+for ln in raw.splitlines(True):
+    t=ln[2:] if ln.startswith("# ") else (ln[1:] if ln.startswith("#") else ln)
+    s=t.lstrip()
+    if (not on) and (s.startswith("----") or s.startswith("Starting MAC") or s.startswith("[PASS]") or s.startswith("[FAIL]") or s.startswith("[VALID]") or s.startswith("[INVALID]") or s.startswith("====") or "ERROR:" in t):
+        on=True
+    if on:
+        if s.startswith("** Note:") or s.startswith("End time:") or s.startswith("Errors:"):
+            break
+        out.append(t)
+if out:
+    p.write_text("".join(out),encoding="utf-8")
+' "\$VSIM_LOG"
 tail -n 30 "\$VSIM_LOG" || true
 exit \$rc
 REMOTE
 vsim_rc=$?
 set -e
 
-echo
-if rsync_from_remote "~/$REMOTE_RTL_REL/vlog_mac.log" "$LOCAL_LOG/vlog.log"; then
-    echo "Local copy: $LOCAL_LOG/vlog.log"
-fi
+# --- back on host: copy lab40 log/ into this repo's log/ ---
+rsync_from_remote "~/$REMOTE_LOG_REL/vlog.log" "$LOCAL_LOG/vlog.log" || true
+rsync_from_remote "~/$REMOTE_LOG_REL/vlog_files" "$LOCAL_LOG/vlog_files" || true
 if rsync -az --ignore-missing-args \
     -e "ssh -o ControlMaster=auto -o ControlPath=${SSH_CTL} -o ControlPersist=10m" \
-    "$REMOTE_USER@$REMOTE_HOST:~/$REMOTE_RTL_REL/vsim_mac.log" \
+    "$REMOTE_USER@$REMOTE_HOST:~/$REMOTE_LOG_REL/vsim.log" \
     "$LOCAL_LOG/vsim.log" 2> >(filter_lab_noise >&2) \
     && [[ -f "$LOCAL_LOG/vsim.log" ]]; then
-    python3 - "$LOCAL_LOG/vsim.log" <<'PY' || true
-import pathlib, sys
-p = pathlib.Path(sys.argv[1])
-lines = [ln[2:] if ln.startswith("# ") else (ln[1:] if ln.startswith("#") else ln)
-         for ln in p.read_text(encoding="utf-8", errors="replace").splitlines(True)]
-keep = []
-on = False
-for ln in lines:
-    s = ln.lstrip()
-    if (not on) and (s.startswith("----") or s.startswith("Starting MAC") or s.startswith("[PASS]") or s.startswith("[FAIL]") or s.startswith("[VALID]") or s.startswith("[INVALID]") or s.startswith("====") or "ERROR:" in ln):
-        on = True
-    if on:
-        if s.startswith("** Note:") or s.startswith("End time:") or s.startswith("Errors:"):
-            break
-        keep.append(ln)
-if keep:
-    p.write_text("".join(keep), encoding="utf-8")
-PY
-    echo "Local copy: $LOCAL_LOG/vsim.log"
+    echo "log   $LOCAL_LOG/vsim.log"
 fi
 exit "$vsim_rc"

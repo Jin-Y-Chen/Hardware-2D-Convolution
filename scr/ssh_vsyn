@@ -60,19 +60,18 @@ fi
 
 mkdir -p "$LOCAL_LOG"
 
-echo "ssh_vsyn"
-echo "Host : $REMOTE_USER@$REMOTE_HOST"
-echo "Top  : $TOP"
-echo "Files: ${FILE_LIST:-<tcl $TCL>}"
-echo
+echo "vsyn  $REMOTE_USER@$REMOTE_HOST  top=$TOP  ${FILE_LIST:-tcl=$TCL}"
 
 if [[ -n "$TCL_LOCAL" ]]; then
     rsync_to_remote "$TCL_LOCAL" "~/$REMOTE_RTL_REL/user.tcl"
     ssh_lab40 <<REMOTE
 $REMOTE_CAD_BOOTSTRAP
-RTL="\$HOME/$REMOTE_RTL_REL"
+PROJ="\$HOME/$REMOTE_PROJECT_REL"
+RTL="\$PROJ/rtl"
+LOGDIR="\$PROJ/log"
+mkdir -p "\$LOGDIR"
 cd "\$RTL"
-"\$DC_SHELL" -f user.tcl | tee "\$RTL/dc_mac.log"
+"\$DC_SHELL" -f user.tcl | tee "\$LOGDIR/vsyn.log"
 REMOTE
 else
     ssh_lab40 <<REMOTE
@@ -81,7 +80,10 @@ if [ -z "\${DC_SHELL:-}" ] || [ ! -x "\$DC_SHELL" ]; then
     echo "ERROR: dc_shell not found." >&2
     exit 1
 fi
-RTL="\$HOME/$REMOTE_RTL_REL"
+PROJ="\$HOME/$REMOTE_PROJECT_REL"
+RTL="\$PROJ/rtl"
+LOGDIR="\$PROJ/log"
+mkdir -p "\$LOGDIR"
 cd "\$RTL"
 "\$DC_SHELL" -x '
 analyze -format sverilog {$FILE_LIST}
@@ -89,12 +91,9 @@ elaborate $TOP
 compile
 report_qor
 exit
-' | tee "\$RTL/dc_mac.log"
+' | tee "\$LOGDIR/vsyn.log"
 REMOTE
 fi
 
-echo
-rsync_from_remote "~/$REMOTE_RTL_REL/dc_mac.log" "$LOCAL_LOG/vsyn.log" || true
-if [[ -f "$LOCAL_LOG/vsyn.log" ]]; then
-    echo "Local copy: $LOCAL_LOG/vsyn.log"
-fi
+rsync_from_remote "~/$REMOTE_LOG_REL/vsyn.log" "$LOCAL_LOG/vsyn.log" || true
+[[ -f "$LOCAL_LOG/vsyn.log" ]] && echo "log   $LOCAL_LOG/vsyn.log"

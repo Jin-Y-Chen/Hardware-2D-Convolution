@@ -1,4 +1,4 @@
-`define WIDTHVAL 16
-`define ACCWVAL 48
+`define WIDTHVAL 8
+`define ACCWVAL 25
 `define PIPELINEDVAL 0
-`define SEEDVAL 999
+`define SEEDVAL random

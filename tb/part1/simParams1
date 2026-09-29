@@ -17,8 +17,9 @@
 # If you want to run in GUI mode, you should run with & at the end, like
 #        ./simParams1 8 24 0 1 &
 
-# Compiles this directory (TB + params.sv) and RTL under ../../rtl/
-# (param_pkg.sv and rtl/part1/*.sv). Edit the file list to compile a subset.
+# Compiles the course TB only (mac_tb.sv + mac_tb.c). Do not glob *.c — 
+# mac_tb_mod.c defines the same DPI symbols and the linker will fail.
+# RTL is ../../rtl/param_pkg.sv and ../../rtl/part1/*.sv.
 
 if [ $# -ne 4 ]; then
     echo "ERROR: incorrect number of parameters given."
@@ -29,8 +30,9 @@ else
     SEED=$(sed -n 's/^`define SEEDVAL //p' params.sv | tr -d '\r')
     [[ -n "$SEED" ]] || SEED=random
     echo "Using -sv_seed $SEED  (edit SEEDVAL in params.sv to reproduce)"
-    SRCS="*.sv ../../rtl/param_pkg.sv ../../rtl/part1/*.sv"
-    ls *.c > /dev/null 2>&1 && SRCS="$SRCS *.c"
+    rm -rf work
+    vlib work
+    SRCS="mac_tb.sv mac_tb.c ../../rtl/param_pkg.sv ../../rtl/part1/*.sv"
     vlog -64 +acc +incdir+. +incdir+../../rtl +incdir+../../rtl/part1 $SRCS || exit 1
     if [[ $4 -eq 0 ]]; then
         vsim -64 -sv_seed "$SEED" -c mac_tb -do "run -all; quit"
