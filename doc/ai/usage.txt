@@ -17,7 +17,7 @@ Date: 9/20, once upon good evening
     [Cursor Grok-4.6] 
     R: *Large graphical structure, A seperate folder for testbench, each step of the design process(sim, syn), input, and output folder
 
-Date: 9/24, earbubs inside headphones(no music)
+Date: 9/24, 
     --------------------------------------------------
     Q: how to sign extend in verilog?
 
@@ -59,7 +59,7 @@ Date: 9/24, earbubs inside headphones(no music)
     
     R: quant is declared and initalized inside always_comb. lifetime is not specified, so the tool refuses the implicit default. Declare it in the main body or don't initalize
 
-Date: 9/25, earbubs inside headphones(with music)
+Date: 9/25,
     ---------------------------------------------------
     Q: Error: near "if": syntax error, unexpected if, expecting IDENTIFIER or TYPE_IDENTIFIER or NETTYPE_IDENTIFIER.
 
@@ -70,13 +70,13 @@ Date: 9/25, earbubs inside headphones(with music)
 
     R: out_exp_d is the delayed expected output: last cycle’s C-model result, held for one cycle and compared to the DUT’s out
 
-Date: 9/26, Antother day anther coffee
+Date: 9/26, 
     ---------------------------------------------------
     Q: *linking my simulation script, ssh_vsim, make sure to push correct parameter to remote and pull simulation log to host
 
     R: *written and modify ssh_vsim to reference simParams1, which was encahned to display all signal
 
-Date: 9/27, So close to the MAC, >> "I ignored so much reading/hint in the manual huh" >> IS DONE
+Date: 9/27, 
     ---------------------------------------------------
     Q: *Asking for specific edge cases: how to assign out = 0 initally without causing double assignment
 
@@ -96,5 +96,15 @@ Date: 9/27, So close to the MAC, >> "I ignored so much reading/hint in the manua
     Q: *Have the accumaulator and Q_reg in the same register, if statement is bit janky
 
     R: Split accumaulator and Q into two seperate register, similatr to the layout
+
+Date: 9/27,
+    ---------------------------------------------------
+    Q: Synatx error regarding "(" in module instantiation
+
+    R: Shows the correct syntax for module instatntiation
+    ---------------------------------------------------
+    Q: *Asking for specific edge cases: the MAC_pipeline output should still update even without all {0,0,0} control signal
+
+    R: Did not pipeline the input_valid through the first register
 
 

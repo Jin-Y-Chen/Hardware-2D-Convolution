@@ -24,13 +24,6 @@ import "DPI-C" function void sim_cycle_unpipelined(input int input0, input int i
                                                    input bit input_valid, input bit init_acc, input bit reset,
                                                    input int Q, input int WIDTH, input int ACCW,
                                                    output longint res);
-import "DPI-C" function void dump_cycle(input longint t,
-                                        input int rst, input int init_acc, input int valid, input int Q,
-                                        input int i0, input int i1, input int initv,
-                                        input int outv, input int exp_d, input int expv,
-                                        input longint acc_dut,
-                                        input int pipelined, input int fail_n);
-import "DPI-C" function void dump_summary(input int cycles, input int fails);
 
 // Include the params.sv file, which holds the parameter values
 `include "params.sv"
@@ -104,7 +97,6 @@ module mac_tb();
     parameter WIDTH = `WIDTHVAL;         // the number of bits in the inputs and the output
     parameter ACCW  = `ACCWVAL;          // the number of bits in the accumulator
     parameter PIPELINED = `PIPELINEDVAL; // 0 for unpipelined design, 1 for pipelined design
-    parameter TRACE = 1;                 // 1: print every cycle's signals; 0: fails only
 
     logic clk, reset;
     initial clk = 0;
@@ -114,24 +106,21 @@ module mac_tb();
     logic signed [WIDTH-1:0] out, out_exp, out_exp_d;
     logic [6:0] Q;
     logic input_valid, init_acc;
-    logic signed [ACCW-1:0] acc_w;
 
+    // Instantiate the DUT based on PIPELINED parameter
     generate
-        if (PIPELINED == 1) begin : g_pipe
+        if (PIPELINED == 1)
             mac_pipe #(WIDTH, ACCW) dut(input0, input1, init_value, Q, out, clk, reset, init_acc, input_valid);
-            assign acc_w = dut.next_value;
-        end else begin : g_mac
+        else
             mac #(WIDTH, ACCW) dut(input0, input1, init_value, Q, out, clk, reset, init_acc, input_valid);
-            assign acc_w = dut.acc;
-        end
     endgenerate
 
     // An object of class "testdata" (See class definition above). td holds the
     // inputs for the current cycle.
     testdata #(WIDTH, ACCW) td;
 
+    // Count how many times the testbench identifies errors in the design.
     integer errors = 0;
-    integer cycles = 0;
 
     // Check and display simulation parameters
     initial begin
@@ -180,36 +169,26 @@ module mac_tb();
         init_acc = td.init_acc;
         reset = td.reset;
 
+        // Drive a new Q every cycle
         Q = td.Q;
-
-        // Sample at this t (negedge) before stepping the C model, so the dump
-        // matches DUT acc / C accum at the same time. Check is unchanged.
-        @(negedge clk);
-        cycles = cycles + 1;
-
-        if (out !== out_exp_d) begin
-            errors = errors+1;
-            $display($time,, "ERROR: MAC output = %d; expected value = %d", out, out_exp_d);
-            dump_cycle(longint'($time), int'(reset), int'(init_acc), int'(input_valid), int'(Q),
-                       int'(input0), int'(input1), int'(init_value),
-                       int'(out), int'(out_exp_d), int'(out_exp_d),
-                       longint'(acc_w), PIPELINED, errors);
-            if (errors >= 100) begin
-                $display($time,, "100 errors reached. Stopping simulation early.");
-                dump_summary(cycles, errors);
-                $finish;
-            end
-        end else if (TRACE) begin
-            dump_cycle(longint'($time), int'(reset), int'(init_acc), int'(input_valid), int'(Q),
-                       int'(input0), int'(input1), int'(init_value),
-                       int'(out), int'(out_exp_d), int'(out_exp_d),
-                       longint'(acc_w), PIPELINED, 0);
-        end
 
         if (PIPELINED == 1)
             sim_cycle_pipelined(td.input0, td.input1, td.init_value, td.input_valid, td.init_acc, td.reset, td.Q, WIDTH, ACCW, out_exp);
         else
             sim_cycle_unpipelined(td.input0, td.input1, td.init_value, td.input_valid, td.init_acc, td.reset, td.Q, WIDTH, ACCW, out_exp);
+
+        // Mid-cycle: check the output that the previous cycle predicted
+        @(negedge clk);
+
+        if (out !== out_exp_d) begin
+            $display($time,, "ERROR: MAC output = %d; expected value = %d", out, out_exp_d);
+            errors = errors+1;
+
+            if (errors >= 100) begin
+                $display($time,, "100 errors reached. Stopping simulation early.");
+                $finish;
+            end
+        end
 
         out_exp_d = out_exp;
 
@@ -227,11 +206,6 @@ module mac_tb();
         input0 = 0; input1 = 0; init_value = 0; Q = 0;
         input_valid = 0; init_acc = 0; reset = 1;
         out_exp_d = 0;
-        #0;
-        dump_cycle(0, int'(reset), int'(init_acc), int'(input_valid), int'(Q),
-                   int'(input0), int'(input1), int'(init_value),
-                   int'(out), int'(out_exp_d), 0,
-                   longint'(acc_w), PIPELINED, 0);
 
         @(posedge clk);
         #1;
@@ -258,7 +232,7 @@ module mac_tb();
             run_cycle();
         end
 
-        dump_summary(cycles, errors);
+        $display("Simulated %d tests. Detected %d errors.", TESTS, errors);
 
         #10;
         $finish;

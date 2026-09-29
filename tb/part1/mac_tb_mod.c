@@ -4,6 +4,7 @@
 // Testbench for mac_pipe and mac modules
 
 
+// Modified dump/trace DPI for mac_tb_mod.sv.
 // This file contains the DPI functions used in the MAC testbench.
 // For each simulation cycle, the testbench will call this
 // sim_cycle function, which computes the expected values of the registers
@@ -22,6 +23,150 @@ int prod_valid = 0;
 acc_t accum = 0;
 int shift_r1 = 0;
 int shift_r2 = 0;
+
+static void i128_str(acc_t v, char *out, int cap)
+{
+    char tmp[80];
+    int n = 0;
+    int i;
+    int neg = 0;
+
+    if (cap < 2)
+        return;
+    if (v == 0) {
+        out[0] = '0';
+        out[1] = '\0';
+        return;
+    }
+    if (v < 0) {
+        neg = 1;
+        v = -v;
+    }
+    while (v > 0 && n < (int)sizeof(tmp)) {
+        tmp[n++] = (char)('0' + (int)(v % 10));
+        v /= 10;
+    }
+    i = 0;
+    if (neg && i < cap - 1)
+        out[i++] = '-';
+    while (n > 0 && i < cap - 1)
+        out[i++] = tmp[--n];
+    out[i] = '\0';
+}
+
+static void i128_hex(acc_t v, char *out, int cap)
+{
+    unsigned __int128 u = (unsigned __int128)v;
+    char tmp[40];
+    int n = 0;
+    int i;
+
+    if (cap < 4)
+        return;
+    if (u == 0) {
+        snprintf(out, (size_t)cap, "0x0");
+        return;
+    }
+    while (u > 0 && n < (int)sizeof(tmp)) {
+        tmp[n++] = "0123456789abcdef"[u & 0xf];
+        u >>= 4;
+    }
+    i = 0;
+    out[i++] = '0';
+    out[i++] = 'x';
+    while (n > 0 && i < cap - 1)
+        out[i++] = tmp[--n];
+    out[i] = '\0';
+}
+
+static void kv_s(const char *name, const char *val)
+{
+    printf("  %16s = %18s\n", name, val);
+}
+
+static void kv_dec_hex(const char *name, const char *dec, const char *hex)
+{
+    printf("  %16s = %10s (%s)\n", name, dec, hex);
+}
+
+static void kv_i(const char *name, int v)
+{
+    printf("  %16s = %10d (0x%x)\n", name, v, (unsigned)v);
+}
+
+static void kv_ll(const char *name, long long v)
+{
+    printf("  %16s = %10lld (0x%llx)\n", name, v, (unsigned long long)v);
+}
+
+void dump_cycle(long long t, int rst, int init_acc, int valid, int Q,
+                int i0, int i1, int initv,
+                int outv, int exp_d, int expv,
+                long long acc_dut,
+                int pipelined, int fail_n)
+{
+    char accs[48];
+    char acch[48];
+    char prods[48];
+    char prodh[48];
+
+    i128_str(accum, accs, sizeof accs);
+    i128_hex(accum, acch, sizeof acch);
+    i128_str(prod_pipe, prods, sizeof prods);
+    i128_hex(prod_pipe, prodh, sizeof prodh);
+    (void)expv;
+
+    if (fail_n > 0)
+        printf("\n[FAIL] t=%lld | reset=%d init_acc=%d input_valid=%d Q=%d\n",
+               t, rst, init_acc, valid, Q);
+    else
+        printf("\n[PASS] t=%lld | reset=%d init_acc=%d input_valid=%d Q=%d\n",
+               t, rst, init_acc, valid, Q);
+
+    printf("\n  --- inputs ---\n");
+    kv_i("reset", rst);
+    kv_i("init_acc", init_acc);
+    kv_i("input_valid", valid);
+    kv_i("Q", Q);
+    kv_i("input0", i0);
+    kv_i("input1", i1);
+    kv_i("init_value", initv);
+
+    printf("\n  --- dut ---\n");
+    kv_ll("acc_w", acc_dut);
+
+    printf("\n  --- outputs ---\n");
+    kv_i("out", outv);
+    kv_i("out_exp_d", exp_d);
+
+    printf("\n  --- golden (C) ---\n");
+    kv_dec_hex("accum", accs, acch);
+    kv_i("shift_r1", shift_r1);
+    if (pipelined) {
+        kv_i("shift_r2", shift_r2);
+        kv_dec_hex("prod_pipe", prods, prodh);
+        kv_i("prod_valid", prod_valid);
+    }
+    fflush(stdout);
+}
+
+void dump_summary(int cycles, int fails)
+{
+    int passes = cycles - fails;
+    double match = (cycles > 0) ? (100.0 * (double)passes / (double)cycles) : 0.0;
+
+    printf("\n========================================\n");
+    if (fails == 0)
+        printf("[VALID] summary\n");
+    else
+        printf("[INVALID] summary\n");
+    printf("  pass  = %d\n", passes);
+    printf("  fail  = %d\n", fails);
+    printf("  total = %d\n", cycles);
+    printf("  match = %.1f%%  (%d/%d)\n", match, passes, cycles);
+    printf("========================================\n");
+    fflush(stdout);
+}
 
 // Truncate accumulated value v down to a "width"-bit two's complement value 
 static acc_t truncate(acc_t v, int width) {

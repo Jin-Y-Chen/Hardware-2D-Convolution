@@ -35,10 +35,7 @@ module mac #(
 );
 
     logic signed [ACCW-1:0] acc; 
-    logic signed [ACCW-1:0] D;
     logic [6:0] Q_reg;
-
-    assign D = acc + (input0 * input1);
 
     always_ff @(posedge clk) begin : acc_reg
         if (reset)
@@ -46,7 +43,7 @@ module mac #(
         else if (init_acc)
             acc <= init_value;
         else if (input_valid)
-            acc <= D;
+            acc <= acc + (input0 * input1); //D
     end
 
     // Q is enabled by input_valid only; init_acc does not affect it
@@ -68,18 +65,11 @@ module mac #(
 
 endmodule
 
-
 /*
-rst,    int_a,  inp_v,  accum,  output
-0       0       0       mac     out
-0       0       1       mac     mac + Q + sat
-0       1       0       val     val + Q + sat
-0       1       1       val     val + Q + sat
-1       0       0       0       0
+ synthesize your unpipelined design with WIDTH=16 and ACCW=48 and
+determine the fastest clock frequency your design can reach. 
 
-
-
+ synthesis output file with a name (synth_mac.txt)
+that includes the parameters you set and the clock period you are targeting.
 
 */
-
-
