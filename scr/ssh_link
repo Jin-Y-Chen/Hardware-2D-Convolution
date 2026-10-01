@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Link rtl/, tb/, and log/ with lab40.
-#   rtl/ tb/: host is master
+# Link rtl/, tb/, sim/, syn/, constraint/, and log/ with CAD.
+#   rtl/ tb/ sim/ syn/ constraint/: host is master
 #     1) push host -> remote: same-name files take the host copy (no --delete)
 #     2) pull remote -> host: only new / different names (host files kept)
-#   log/: remote is master (CAD writes on lab40; host only reads)
+#   log/: remote is master (CAD writes transcripts; host only reads)
 #     pull remote -> host and overwrite local transcripts (no push)
-# Tool junk (work/, waves, Questa leftovers in rtl/tb) is never copied.
+# Tool junk (work/, waves, Questa leftovers) is never copied.
 #   link
 
 set -euo pipefail
@@ -14,7 +14,10 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cad_common.sh"
 
 declare -A TREE_EXTRAS
 TREE_EXTRAS[rtl]=""
-TREE_EXTRAS[tb]="--exclude /README.md"
+TREE_EXTRAS[tb]="--exclude /README.md --exclude /part1/params.sv --exclude /part1/simParams1 --exclude /part1/genParams1 --exclude /part1/wave.do"
+TREE_EXTRAS[sim]="--exclude /part1/params.sv"
+TREE_EXTRAS[syn]="--exclude /params.sv"
+TREE_EXTRAS[constraint]=""
 TREE_EXTRAS[log]="--exclude /README.md"
 
 # rsync --out-format='%n' → one path per line (skip dir-only "./")
@@ -30,7 +33,7 @@ xfer_summary() {
 }
 
 sync_one() {
-    local name="$1" mode="$2" arrow="$3" empty="$4"
+    local name="$1" mode="$2" empty="$3"
     local local_dir="$PROJECT_ROOT/$name"
     local remote="$REMOTE_USER@$REMOTE_HOST:~/$REMOTE_PROJECT_REL/$name/"
     # shellcheck disable=SC2206
@@ -45,12 +48,34 @@ sync_one() {
     else
         out=$(rsync_project_ssh "$name" "${extras[@]}" --ignore-existing "$remote" "$local_dir/" || true)
     fi
-    printf '  %-4s %s  %s\n' "$name/" "$arrow" "$(xfer_summary "$out" "$empty")"
+    printf '    %-4s  %s\n' "$name/" "$(xfer_summary "$out" "$empty")"
 }
 
-echo "link  $REMOTE_USER@$REMOTE_HOST:~/$REMOTE_PROJECT_REL"
-sync_one rtl push        "->"  "up to date"
-sync_one tb  push        "->"  "up to date"
-sync_one rtl pull        "<-"  "no new files"
-sync_one tb  pull        "<-"  "no new files"
-sync_one log pull-update "<-"  "up to date"
+echo "link  host  <->  $REMOTE_NAME  (~/$REMOTE_PROJECT_REL)"
+echo
+echo "  host -> CAD"
+sync_one rtl push        "up to date"
+sync_one tb  push        "up to date"
+sync_one sim push        "up to date"
+sync_one syn push        "up to date"
+sync_one constraint push "up to date"
+# params.sv lives in constraint/param only. Drop leftover copies so pull
+# --ignore-existing cannot restore them on the host.
+ssh_cad <<REMOTE
+rm -f "\$HOME/$REMOTE_PROJECT_REL/tb/part1/params.sv" \
+      "\$HOME/$REMOTE_PROJECT_REL/tb/part1/simParams1" \
+      "\$HOME/$REMOTE_PROJECT_REL/tb/part1/genParams1" \
+      "\$HOME/$REMOTE_PROJECT_REL/tb/part1/wave.do" \
+      "\$HOME/$REMOTE_PROJECT_REL/sim/part1/params.sv" \
+      "\$HOME/$REMOTE_PROJECT_REL/syn/params.sv"
+REMOTE
+echo
+echo "  CAD -> host   (new names only; host files kept)"
+sync_one rtl pull        "no new files"
+sync_one tb  pull        "no new files"
+sync_one sim pull        "no new files"
+sync_one syn pull        "no new files"
+sync_one constraint pull "no new files"
+echo
+echo "  CAD -> host   (log: overwrite local transcripts)"
+sync_one log pull-update "up to date"

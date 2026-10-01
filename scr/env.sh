@@ -1,24 +1,32 @@
 #!/usr/bin/env bash
-# source scr/env.sh
-#   link   vlog   vsim   vsyn
+# WSL / Linux / Git Bash:
+#   source scr/env.sh
+# Then:  link   vlog   vsim   vsyn
+#
 # Functions (not aliases) so they override /usr/bin/link and other PATH tools.
-# Drop leftover aliases from an older env.sh — bash cannot redefine an alias as a function.
+# Always launch with bash so missing +x and CRLF shebangs still work.
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "source this file:  source scr/env.sh" >&2
+    exit 1
+fi
+
 unalias link vlog vsim vsyn 2>/dev/null || true
 
-_ese507_root() {
-    git rev-parse --show-toplevel 2>/dev/null
-}
+_ESE507_SCR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 _ese507_scr() {
-    local root
-    root="$(_ese507_root)" || {
-        echo "Not inside the Hardware-2D-Convolution repo." >&2
-        return 1
-    }
-    "$root/scr/$1" "${@:2}"
+    local cmd="$1"
+    shift
+    bash "$_ESE507_SCR/$cmd" "$@"
 }
 
 link() { _ese507_scr ssh_link "$@"; }
 vlog() { _ese507_scr ssh_vlog "$@"; }
 vsim() { _ese507_scr ssh_vsim "$@"; }
 vsyn() { _ese507_scr ssh_vsyn "$@"; }
+
+export _ESE507_SCR
+export -f _ese507_scr link vlog vsim vsyn 2>/dev/null || true
+
+echo "Aliases loaded:  link  vlog  vsim  vsyn"

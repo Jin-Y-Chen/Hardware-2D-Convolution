@@ -25,7 +25,7 @@ import "DPI-C" function void sim_cycle_unpipelined(input int input0, input int i
                                                    input int Q, input int WIDTH, input int ACCW,
                                                    output longint res);
 
-// Include the params.sv file, which holds the parameter values
+// Include constraint/param/params.sv (WIDTH / ACCW / PIPELINED / SEED)
 `include "params.sv"
 
 // A class to hold one instance of test data and associated control logic.

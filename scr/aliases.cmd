@@ -1,5 +1,6 @@
 @echo off
-REM   scr\aliases.cmd
+REM Windows CMD:  scr\aliases.cmd
+REM WSL / Linux:  source scr/env.sh
 REM Then:  link    vlog    vsim    vsyn
 
 set "SCR=%~dp0"

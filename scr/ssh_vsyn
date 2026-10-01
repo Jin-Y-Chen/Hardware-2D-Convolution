@@ -1,99 +1,200 @@
 #!/usr/bin/env bash
-# Synthesize selected RTL on lab40 with Design Compiler (dc_shell).
-#   vsyn part1/mac.sv
-#   vsyn --top mac part1/mac.sv
-#   vsyn --tcl syn/part1/mac.tcl
-# Log: log/vsyn.log
+# Synthesize a top-level RTL on CAD.  Usage:  vsyn <top>
+#   vsyn mac
+#   vsyn mac_pipe
+# Fills syn/runsynth.tcl then runs dc_shell -f runsynth.tcl
+# Log: log/vsyn.log   Netlist: syn/gates.v
 
 set -euo pipefail
 # shellcheck source=cad_common.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cad_common.sh"
 
-usage() {
+show_menu() {
     cat <<'EOF'
-Usage:  vsyn [options] <file> [<file> ...]
+vsyn  <top>
 
-  vsyn part1/mac.sv
-  vsyn --top mac part1/mac.sv
-  vsyn --tcl syn/part1/mac.tcl     run your DC script instead of the default
+EOF
+    list_duts
+    cat <<'EOF'
 
-  -h, --help
-  -l, --list
-  -a, --all
-  -t, --top NAME     elaborate this module (default: mac)
-  --tcl FILE         DC tcl path relative to the repo root
+  vsyn mac
+  vsyn mac_pipe
+  vsyn --period 2 mac
+
+  -h, --help     this text
+  -l, --list     same as no args
+  --clk NAME     clock port (default: clk)
+  --rst NAME     reset port (default: reset)
+  --period NS    clock period ns (default: 1)
 EOF
 }
 
-WANT_ALL=0
-TOP="mac"
-TCL=""
-SELECTED=()
+need() {
+    echo "$1" >&2
+    echo >&2
+    show_menu >&2
+    exit 2
+}
+
+# top name → rtl-relative path (part1/mac.sv)
+dut_rtl() {
+    local name="$1"
+    name="${name#./}"
+    name="${name%.sv}"
+    name="${name##*/}"
+    case "$name" in
+        mac|mac_pipe)
+            [[ -f "$LOCAL_RTL/part1/${name}.sv" ]] || return 1
+            echo "$name" "part1/${name}.sv"
+            ;;
+        *) return 1 ;;
+    esac
+}
+
+# Rewrite the setup block of syn/runsynth.tcl for this top + RTL files.
+update_runsynth() {
+    local top="$1"
+    shift
+    python3 - "$LOCAL_SYN/runsynth.tcl" "$CLK_NAME" "$CLK_PERIOD" "$RST_NAME" "$top" "$P_WIDTH" "$P_ACCW" "$@" <<'PY'
+import pathlib, re, sys
+
+tcl = pathlib.Path(sys.argv[1])
+clk, period, rst, top, width, accw = sys.argv[2:8]
+
+def rtl_rel(f):
+    f = f.replace("\\", "/")
+    for pfx in ("../rtl/", "rtl/", "./"):
+        if f.startswith(pfx):
+            f = f[len(pfx):]
+    return "../rtl/" + f
+
+files = [rtl_rel(f) for f in sys.argv[8:]]
+src = f'"{files[0]}"' if len(files) == 1 else (
+    "[list " + " ".join(f'"{f}"' for f in files) + "]"
+)
+
+text = tcl.read_text(encoding="utf-8")
+subs = {
+    r'(set CLK_NAME )"[^"]*"':     rf'\g<1>"{clk}"',
+    r'(set CLK_PERIOD )\S+;':      rf'\g<1>{period};',
+    r'(set RST_NAME )"[^"]*"':     rf'\g<1>"{rst}"',
+    r'(set TOP_MOD_NAME )"[^"]*"': rf'\g<1>"{top}"',
+    r'(set P_WIDTH )\S+;':         rf'\g<1>{width};',
+    r'(set P_ACCW )\S+;':          rf'\g<1>{accw};',
+    r'set SRC_FILE .*':            "set SRC_FILE " + src + ";",
+}
+for pat, repl in subs.items():
+    text, n = re.subn(pat, repl, text, count=1, flags=re.M)
+    if n != 1:
+        sys.exit(f"vsyn: failed to set {pat} in runsynth.tcl")
+tcl.write_text(text, encoding="utf-8")
+PY
+}
+
+TOP=""
+CLK_NAME="clk"
+RST_NAME="reset"
+CLK_PERIOD="1"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -h|--help) usage; exit 0 ;;
-        -l|--list) echo "Sources under rtl/"; list_rtl; exit 0 ;;
-        -a|--all)  WANT_ALL=1; shift ;;
-        -t|--top)  TOP="$2"; shift 2 ;;
-        --tcl)     TCL="$2"; shift 2 ;;
-        --) shift; SELECTED+=("$@"); break ;;
-        -*) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
-        *) SELECTED+=("$1"); shift ;;
+        -h|--help) show_menu; exit 0 ;;
+        -l|--list) show_menu; exit 0 ;;
+        --clk)     [[ $# -ge 2 ]] || need "vsyn --clk needs a name."
+                   CLK_NAME="$2"; shift 2 ;;
+        --rst)     [[ $# -ge 2 ]] || need "vsyn --rst needs a name."
+                   RST_NAME="$2"; shift 2 ;;
+        --period)  [[ $# -ge 2 ]] || need "vsyn --period needs a value."
+                   CLK_PERIOD="$2"; shift 2 ;;
+        -*) need "Unknown option: $1" ;;
+        *)
+            [[ -z "$TOP" ]] || need "Too many arguments."
+            TOP="$1"
+            shift
+            ;;
     esac
 done
 
-TCL_LOCAL=""
-if [[ -n "$TCL" ]]; then
-    if [[ -f "$PROJECT_ROOT/$TCL" ]]; then
-        TCL_LOCAL="$PROJECT_ROOT/$TCL"
-    elif [[ -f "$TCL" ]]; then
-        TCL_LOCAL="$TCL"
-    else
-        echo "Not found: $TCL" >&2
-        exit 2
-    fi
-    FILE_LIST=""
-else
-    resolve_rtl_files
+[[ -n "$TOP" ]] || need "Pick a top-level design."
+resolved="$(dut_rtl "$TOP" || true)"
+[[ -n "$resolved" ]] || need "Unknown top: $TOP"
+TOP="${resolved%% *}"
+DUT_FILE="${resolved#* }"
+
+FILE_LIST="$DUT_FILE"
+if [[ -f "$LOCAL_RTL/param_pkg.sv" ]]; then
+    FILE_LIST="param_pkg.sv $FILE_LIST"
 fi
 
+[[ -f "$LOCAL_SYN/runsynth.tcl" ]] || need "Missing syn/runsynth.tcl"
+[[ -f "$LOCAL_CONSTRAINT/param/params.sv" ]] || need "Missing constraint/param/params.sv — edit it, then link."
+read_part1_params
+P_WIDTH="$P1_WIDTH"
+P_ACCW="$P1_ACCW"
+if [[ "$TOP" == mac && "$P1_PIPE" != 0 ]]; then
+    need "constraint/param/params.sv has PIPELINEDVAL=$P1_PIPE; set it to 0 for vsyn mac (or vsyn mac_pipe)."
+fi
+if [[ "$TOP" == mac_pipe && "$P1_PIPE" != 1 ]]; then
+    need "constraint/param/params.sv has PIPELINEDVAL=$P1_PIPE; set it to 1 for vsyn mac_pipe (or vsyn mac)."
+fi
+update_runsynth "$TOP" $FILE_LIST
+
 mkdir -p "$LOCAL_LOG"
+show_run_context
 
-echo "vsyn  $REMOTE_USER@$REMOTE_HOST  top=$TOP  ${FILE_LIST:-tcl=$TCL}"
-
-if [[ -n "$TCL_LOCAL" ]]; then
-    rsync_to_remote "$TCL_LOCAL" "~/$REMOTE_RTL_REL/user.tcl"
-    ssh_lab40 <<REMOTE
-$REMOTE_CAD_BOOTSTRAP
-PROJ="\$HOME/$REMOTE_PROJECT_REL"
-RTL="\$PROJ/rtl"
-LOGDIR="\$PROJ/log"
-mkdir -p "\$LOGDIR"
-cd "\$RTL"
-"\$DC_SHELL" -f user.tcl | tee "\$LOGDIR/vsyn.log"
+rsync_to_remote "$LOCAL_SYN/runsynth.tcl" "~/$REMOTE_SYN_REL/runsynth.tcl"
+# Parent dir may not exist until the first link; create it, then send params.
+ssh_cad <<REMOTE
+mkdir -p "\$HOME/$REMOTE_CONSTRAINT_REL/param"
 REMOTE
-else
-    ssh_lab40 <<REMOTE
+rsync_to_remote "$LOCAL_CONSTRAINT/param/params.sv" "~/$REMOTE_CONSTRAINT_REL/param/params.sv"
+ssh_cad <<REMOTE
 $REMOTE_CAD_BOOTSTRAP
 if [ -z "\${DC_SHELL:-}" ] || [ ! -x "\$DC_SHELL" ]; then
     echo "ERROR: dc_shell not found." >&2
     exit 1
 fi
 PROJ="\$HOME/$REMOTE_PROJECT_REL"
-RTL="\$PROJ/rtl"
+SYN="\$PROJ/syn"
 LOGDIR="\$PROJ/log"
-mkdir -p "\$LOGDIR"
-cd "\$RTL"
-"\$DC_SHELL" -x '
-analyze -format sverilog {$FILE_LIST}
-elaborate $TOP
-compile
-report_qor
-exit
-' | tee "\$LOGDIR/vsyn.log"
-REMOTE
+mkdir -p "\$LOGDIR" "\$SYN"
+cd "\$PROJ"
+rm -f params.sv rtl/params.sv rtl/part1/params.sv tb/part1/params.sv \
+    sim/part1/params.sv syn/params.sv
+cd "\$SYN"
+if [ ! -f "\$PROJ/constraint/param/params.sv" ]; then
+    echo "ERROR: constraint/param/params.sv missing on CAD. Run link first." >&2
+    exit 1
 fi
+if [ ! -f setupdc.tcl ]; then
+    FOUND=""
+    for c in \
+        "\$HOME/ese507/setupdc.tcl" \
+        "\$HOME/ese507/proj/part1/setupdc.tcl" \
+        /home/home4/pmilder/ese507/setupdc.tcl \
+        /home/home4/pmilder/ese507/proj/part1/setupdc.tcl \
+        /home/home4/pmilder/ese507/proj/setupdc.tcl
+    do
+        if [ -f "\$c" ]; then
+            FOUND="\$c"
+            break
+        fi
+    done
+    if [ -z "\$FOUND" ]; then
+        FOUND=\$(find /home/home4/pmilder/ese507 "\$HOME/ese507" -name setupdc.tcl -type f 2>/dev/null | head -n 1 || true)
+    fi
+    if [ -n "\$FOUND" ]; then
+        cp "\$FOUND" setupdc.tcl
+    else
+        echo "ERROR: setupdc.tcl not found (course DC library setup)." >&2
+        exit 1
+    fi
+fi
+"\$DC_SHELL" -f runsynth.tcl 2>&1 | tee "\$LOGDIR/vsyn.log"
+if ! grep -q "Total cell area:" "\$LOGDIR/vsyn.log"; then
+    exit 1
+fi
+REMOTE
 
 rsync_from_remote "~/$REMOTE_LOG_REL/vsyn.log" "$LOCAL_LOG/vsyn.log" || true
-[[ -f "$LOCAL_LOG/vsyn.log" ]] && echo "log   $LOCAL_LOG/vsyn.log"
+rsync_from_remote "~/$REMOTE_SYN_REL/gates.v" "$LOCAL_SYN/gates.v" || true
