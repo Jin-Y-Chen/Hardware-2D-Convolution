@@ -28,7 +28,7 @@ source scr/env.sh
 
 The remote server requires:
 
-* SSH access to `lab40` (Questa / DC). Tools are on **lab40**, not eceap1
+* SSH access to CAD (`lab40`; Questa / DC). Tools are on **CAD**, not eceap1
 * `rsync` installed
 * Course setup: `source ~/ese507setup-csh` (or `ese507setup-bash` — the scripts do this)
 
@@ -91,8 +91,8 @@ Without sourcing, run `./scr/ssh_link`.
 ```text
 scr/
 ├── env.sh
-├── cad_common.sh      shared lab40 / CAD setup
-├── ssh_link           rtl/ tb/ host-master; log/ from lab40  (command: link)
+├── cad_common.sh      shared CAD setup
+├── ssh_link           rtl/ tb/ sim/ syn/ constraint/ host-master; log/ from CAD  (command: link)
 ├── ssh_vlog           Questa compile  (command: vlog)
 ├── ssh_vsim           Questa simulate (command: vsim)
 └── ssh_vsyn           Design Compiler (command: vsyn)
@@ -102,44 +102,45 @@ Typical cycle:
 
 ```bash
 source scr/env.sh
-link          # rtl/, tb/, log/ (including params.sv)
+link          # rtl/, tb/, sim/, syn/, constraint/, log/
 vsim mac_tb_mod mac_pipe   # or: vsim mac_tb mac
-vsyn --top mac part1/mac.sv
+vsyn mac
 ```
 
 ```text
-Host  rtl/  --push-->  lab40:~/ese507/project/rtl/
-Host  tb/   --push-->  lab40:~/ese507/project/tb/
+Host  rtl/  --push-->  CAD:~/ese507/project/rtl/
+Host  tb/   --push-->  CAD:~/ese507/project/tb/
+Host  sim/  --push-->  CAD:~/ese507/project/sim/
+Host  syn/  --push-->  CAD:~/ese507/project/syn/
+Host  constraint/ --push-->  CAD:~/ese507/project/constraint/
                  then pull new filenames only
-lab40:~/ese507/project/log/  --pull-->  Host log/   (overwrite transcripts)
+CAD:~/ese507/project/log/  --pull-->  Host log/   (overwrite transcripts)
 ```
 
 ### link
 
-`rtl/` and `tb/`: host is master.
+`rtl/`, `tb/`, `sim/`, `syn/`, and `constraint/`: host is master.
 
-* **Push:** same-name files on lab40 are replaced with the host copy
+* **Push:** same-name files on CAD are replaced with the host copy
 * **Pull:** only files with a new / different name (host files are never overwritten)
 * Skips `tb/README.md`
-* Never copies `work/`, waves, or other tool junk from `rtl/` / `tb/`
-* No `--delete` on push, so a new file created on lab40 can be pulled
+* Never copies `work/`, waves, or other tool junk from `rtl/` / `tb/` / `sim/` / `syn/`
+* No `--delete` on push, so a new file created on CAD can be pulled
 
-`log/`: lab40 is master (host only reads). `link` does not push logs; it overwrites local `log/*.log` from `~/ese507/project/log/`. Skips `log/README.md`.
+`log/`: CAD is master (host only reads). `link` does not push logs; it overwrites local `log/*.log` from `~/ese507/project/log/`. Skips `log/README.md`.
 
 ### vlog
 
-Paths are under `rtl/` or `tb/` (prefixes optional).
-
 ```bash
+vlog mac
+vlog mac_pipe
 vlog --list
-vlog part1/mac.sv
-vlog part1/mac.sv tb/part1/mac_tb.sv tb/part1/mac_tb.c
 vlog --all
 ```
 
 ### params.sv and seed
 
-Edit `tb/part1/params.sv`, then **`link`** (vsim does not copy this file):
+Edit `constraint/param/params.sv`, then **`link`** (vsim does not copy this file):
 
 ```text
 `define WIDTHVAL 16
@@ -150,7 +151,7 @@ Edit `tb/part1/params.sv`, then **`link`** (vsim does not copy this file):
 
 `SEEDVAL` is `random` or a number from Questa’s `Sv_Seed = …` line so you can replay a failing run. `mac_tb` includes this file; `vsim` / `simParams1` pass it as `-sv_seed`.
 
-On lab40 you can also write the file with `./tb/part1/genParams1 WIDTH ACCW PIPE [SEED]` (keeps the old seed unless you pass a fourth argument).
+On CAD you can also write the file with `./sim/part1/genParams1 WIDTH ACCW PIPE [SEED]` (keeps the old seed unless you pass a fourth argument).
 
 ### vsim
 
@@ -172,7 +173,7 @@ vsim mac_tb_mod mac_pipe
   match = pass/total %
 ```
 
-On lab40, from `tb/part1` (RTL paths are under `../../rtl/`):
+On CAD, from `sim/part1` (TB is `../../tb/part1/`, RTL is `../../rtl/`):
 
 ```bash
 ./simParams1 16 48 0 0           # batch
@@ -182,16 +183,16 @@ On lab40, from `tb/part1` (RTL paths are under `../../rtl/`):
 Change widths or seed, then:
 
 ```bash
-# edit tb/part1/params.sv  or  ./tb/part1/genParams1 16 48 0 1896683400
+# edit constraint/param/params.sv  or  ./sim/part1/genParams1 16 48 0 1896683400
 link
 vsim mac_tb_mod mac
 ```
 
 ### vsyn
 
-RTL only (no testbench).
+RTL only (no testbench). `vsyn <top>` writes `syn/runsynth.tcl` then runs it on CAD.
 
 ```bash
-vsyn part1/mac.sv
-vsyn --top mac part1/mac.sv
+vsyn mac
+vsyn mac_pipe
 ```

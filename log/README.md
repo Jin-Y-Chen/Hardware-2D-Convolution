@@ -1,6 +1,6 @@
 Tool output log and working files.
 
-These are copied back from lab40 after each remote CAD run. They are generated; do not edit by hand.
+These are copied back from CAD after each remote run. They are generated; do not edit by hand.
 
 | File | From | What to check |
 |---|---|---|

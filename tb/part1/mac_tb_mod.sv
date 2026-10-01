@@ -32,7 +32,7 @@ import "DPI-C" function void dump_cycle(input longint t,
                                         input int pipelined, input int fail_n);
 import "DPI-C" function void dump_summary(input int cycles, input int fails);
 
-// Include the params.sv file, which holds the parameter values
+// Include constraint/param/params.sv (WIDTH / ACCW / PIPELINED / SEED)
 `include "params.sv"
 
 // A class to hold one instance of test data and associated control logic.

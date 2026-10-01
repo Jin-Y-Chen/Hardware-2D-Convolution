@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Compile selected RTL on lab40 with vlog.
+# Compile selected RTL on CAD with vlog.
+#   vlog mac
+#   vlog mac_pipe
 #   vlog part1/mac.sv
-#   vlog part1/mac.sv part1/mac_pipe.sv
-#   vlog --all
 # Transcript: log/vlog.log  (look for Errors: 0)
 
 set -euo pipefail
@@ -11,13 +11,12 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cad_common.sh"
 
 usage() {
     cat <<'EOF'
-Usage:  vlog [options] <file> [<file> ...]
+Usage:  vlog [options] <top|file> [<file> ...]
 
-Files are under rtl/ or tb/ (prefixes optional).
-
+  vlog mac
+  vlog mac_pipe
   vlog --list
   vlog part1/mac.sv
-  vlog part1/mac.sv tb/part1/mac_tb.sv
   vlog --all
 
   -h, --help    this message
@@ -41,12 +40,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 resolve_src_files
+if [[ -f "$LOCAL_RTL/param_pkg.sv" && " $FILE_LIST " != *" rtl/param_pkg.sv "* ]]; then
+    FILE_LIST="rtl/param_pkg.sv $FILE_LIST"
+fi
 mkdir -p "$LOCAL_LOG"
-
-echo "vlog  $REMOTE_USER@$REMOTE_HOST  $FILE_LIST"
+show_run_context
 
 set +e
-ssh_lab40 <<REMOTE
+ssh_cad <<REMOTE
 $REMOTE_CAD_BOOTSTRAP
 if [ -z "\${VLOG:-}" ] || [ ! -x "\$VLOG" ]; then
     echo "ERROR: vlog not found on this host." >&2
@@ -59,18 +60,17 @@ LOG="\$LOGDIR/vlog.log"
 mkdir -p "\$LOGDIR"
 rm -f "\$PROJ/rtl/vlog_mac.log" "\$PROJ/rtl/vsim_mac.log"
 cd "\$PROJ"
+rm -f params.sv rtl/params.sv rtl/part1/params.sv tb/part1/params.sv \
+    sim/part1/params.sv syn/params.sv
 "\$VLIB" work >/dev/null 2>&1 || true
 
 FILES="$FILE_LIST"
-"\$VLOG" -64 -sv +acc +incdir+tb/part1 +incdir+rtl +incdir+rtl/part1 \$FILES -l "\$LOG"
+"\$VLOG" -64 -sv +acc +incdir+constraint/param +incdir+tb/part1 +incdir+rtl +incdir+rtl/part1 \$FILES -l "\$LOG" || true
 
-if grep -q "Errors: 0" "\$LOG"; then
-    printf '%s\n' \$FILES | tee "\$PROJ/work/.vlog_files" > "\$LOGDIR/vlog_files"
-    echo "vlog  OK"
-else
-    echo "vlog  FAILED" >&2
+if ! grep -q "Errors: 0" "\$LOG"; then
     exit 1
 fi
+printf '%s\n' \$FILES | tee "\$PROJ/work/.vlog_files" > "\$LOGDIR/vlog_files"
 REMOTE
 vlog_rc=$?
 set -e
@@ -80,5 +80,4 @@ rsync_from_remote "~/$REMOTE_LOG_REL/vlog_files" "$LOCAL_LOG/vlog_files" || true
 if [[ ! -f "$LOCAL_LOG/vlog_files" ]]; then
     printf '%s\n' $FILE_LIST > "$LOCAL_LOG/vlog_files"
 fi
-[[ -f "$LOCAL_LOG/vlog.log" ]] && echo "log   $LOCAL_LOG/vlog.log"
 exit "$vlog_rc"

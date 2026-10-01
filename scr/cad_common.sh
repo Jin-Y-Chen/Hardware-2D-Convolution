@@ -2,16 +2,23 @@
 # Shared by ssh_vlog / ssh_vsim / ssh_vsyn. Source from those scripts.
 
 REMOTE_USER="jinchen"
+REMOTE_NAME="CAD"
 REMOTE_HOST="lab40.ece.stonybrook.edu"
 REMOTE_PROJECT_REL="ese507/project"
 REMOTE_RTL_REL="ese507/project/rtl"
 REMOTE_TB_REL="ese507/project/tb"
+REMOTE_SIM_REL="ese507/project/sim"
+REMOTE_SYN_REL="ese507/project/syn"
+REMOTE_CONSTRAINT_REL="ese507/project/constraint"
 REMOTE_LOG_REL="ese507/project/log"
 
 CAD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$CAD_DIR/.." && pwd)"
 LOCAL_RTL="$PROJECT_ROOT/rtl"
 LOCAL_TB="$PROJECT_ROOT/tb"
+LOCAL_SIM="$PROJECT_ROOT/sim"
+LOCAL_SYN="$PROJECT_ROOT/syn"
+LOCAL_CONSTRAINT="$PROJECT_ROOT/constraint"
 LOCAL_LOG="$PROJECT_ROOT/log"
 
 # Git Bash / MSYS has no rsync. Re-run the caller (ssh_link, …) inside WSL.
@@ -105,9 +112,22 @@ list_src() {
     done < <(list_tb)
 }
 
-# Map a user path to rtl/<rel> or tb/<rel>. Empty if missing.
+# Map a user path or short name (mac, mac_pipe, mac_tb) to rtl/<rel> or tb/<rel>.
 locate_src() {
     local raw="$1" rel tree=""
+    raw="${raw#./}"
+    raw="${raw%.sv}"
+    if [[ "$raw" != */* ]]; then
+        if [[ -f "$LOCAL_RTL/part1/${raw}.sv" ]]; then
+            echo "rtl/part1/${raw}.sv"
+            return
+        fi
+        if [[ -f "$LOCAL_TB/part1/${raw}.sv" ]]; then
+            echo "tb/part1/${raw}.sv"
+            return
+        fi
+    fi
+    raw="$1"
     raw="${raw#./}"
     if [[ "$raw" == rtl/* ]]; then
         tree="rtl"
@@ -222,15 +242,14 @@ resolve_src_files() {
     FILE_LIST="${files[*]}"
 }
 
-# Course TB `include "params.sv" — written by tb/part1/simParams1 (3-arg form).
-# Defaults match the part1 example: WIDTH=8 ACCW=24 PIPELINED=0.
+# Course TB include of params.sv — written by sim/part1/genParams1 into constraint/param.
 ensure_part1_params() {
-    local dest="$LOCAL_TB/part1/params.sv"
-    local gen="$LOCAL_TB/part1/simParams1"
+    local dest="$LOCAL_CONSTRAINT/param/params.sv"
+    local gen="$LOCAL_SIM/part1/genParams1"
     [[ "${FILE_LIST:-}" == *mac_tb* || "${FILE_LIST:-}" == *tb/part1* ]] || return 0
     [[ -f "$dest" ]] && return 0
     [[ -f "$gen" ]] || return 0
-    (cd "$LOCAL_TB/part1" && bash ./simParams1 8 24 0)
+    (cd "$LOCAL_SIM/part1" && bash ./genParams1 8 24 0)
 }
 
 # True if every compile path is comm_pkg or under part1/ (simParams1's unit).
@@ -245,7 +264,7 @@ sources_are_part1() {
 }
 
 read_part1_params() {
-    local dest="$LOCAL_TB/part1/params.sv"
+    local dest="$LOCAL_CONSTRAINT/param/params.sv"
     P1_WIDTH=8
     P1_ACCW=24
     P1_PIPE=0
@@ -261,16 +280,34 @@ read_part1_params() {
     [[ -n "$P1_SEED" ]] || P1_SEED=random
 }
 
+# Same params.sv + file list on vlog / vsim / vsyn consoles.
+show_run_context() {
+    local dest="$LOCAL_CONSTRAINT/param/params.sv" f
+    local -a shown=()
+    if [[ -f "$dest" ]]; then
+        echo "params  $(grep define "$dest" | tr -s '[:space:]' ' ' | paste -sd' ' - | tr -d '\r')"
+    else
+        echo "params  (missing constraint/param/params.sv)"
+    fi
+    for f in ${FILE_LIST:-}; do
+        case "$f" in
+            rtl/*|tb/*|sim/*|syn/*|constraint/*) shown+=("$f") ;;
+            *) shown+=("rtl/$f") ;;
+        esac
+    done
+    echo "files   ${shown[*]}"
+}
+
 # Reuse one SSH login for vlog/vsim plus the follow-up rsync (no second password).
 SSH_CTL="${HOME}/.ssh/cm-ese507-%C"
 mkdir -p "${HOME}/.ssh"
 
-# lab40 prints this on every SSH; it is not a transfer error.
+# CAD prints this on every SSH; it is not a transfer error.
 filter_lab_noise() {
     grep -v 'cannot find name for group ID' || true
 }
 
-ssh_lab40() {
+ssh_cad() {
     ssh -o ControlMaster=auto \
         -o "ControlPath=${SSH_CTL}" \
         -o ControlPersist=10m \
@@ -294,6 +331,7 @@ rsync_to_remote() {
 # Generated CAD files — never copy these to or from the host.
 RSYNC_TOOL_EXCLUDES=(
     --exclude 'work/'
+    --exclude 'work_synth/'
     --exclude '*.wlf'
     --exclude 'transcript'
     --exclude 'modelsim.ini'
@@ -310,7 +348,7 @@ RSYNC_TOOL_EXCLUDES=(
     --exclude '.nfs*'
 )
 
-# Two-way folder under ~/ese507/project/<name>  (rtl, tb, or log).
+# Two-way folder under ~/ese507/project/<name>  (rtl, tb, sim, syn, constraint, or log).
 rsync_project_ssh() {
     local name="$1"
     shift
