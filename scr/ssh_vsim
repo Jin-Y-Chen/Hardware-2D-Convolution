@@ -15,7 +15,7 @@ vsim  <top>  <dut>
   top   mac_tb       tb/part1/mac_tb.sv      + mac_tb.c       (course)
         mac_tb_mod   tb/part1/mac_tb_mod.sv  + mac_tb_mod.c   (trace dump)
 
-  dut           mac          rtl/part1/mac.sv        needs PIPELINEDVAL=0 in params.sv
+  dut   mac          rtl/part1/mac.sv        needs PIPELINEDVAL=0 in params.sv
         mac_pipe     rtl/part1/mac_pipe.sv   needs PIPELINEDVAL=1 in params.sv
 
   vsim mac_tb mac
@@ -23,6 +23,8 @@ vsim  <top>  <dut>
   vsim mac_tb_mod mac
   vsim mac_tb_mod mac_pipe
   vsim --seed 1896683400 mac_tb_mod mac_pipe
+
+  After editing constraint/param/params.sv, run link so CAD has the new file.
 
   -h, --help     this text
   -l, --list     same as no args
