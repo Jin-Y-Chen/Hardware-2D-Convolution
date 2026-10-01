@@ -191,10 +191,17 @@ if [ ! -f setupdc.tcl ]; then
     fi
 fi
 "\$DC_SHELL" -f runsynth.tcl 2>&1 | tee "\$LOGDIR/vsyn.log"
+# DC writes these next to cwd (syn/); keep transcripts in log/.
+for f in command.log default.svf; do
+    [ -f "\$SYN/\$f" ] && mv -f "\$SYN/\$f" "\$LOGDIR/\$f"
+    rm -f "\$PROJ/rtl/\$f"
+done
 if ! grep -q "Total cell area:" "\$LOGDIR/vsyn.log"; then
     exit 1
 fi
 REMOTE
 
 rsync_from_remote "~/$REMOTE_LOG_REL/vsyn.log" "$LOCAL_LOG/vsyn.log" || true
+rsync_from_remote "~/$REMOTE_LOG_REL/command.log" "$LOCAL_LOG/command.log" || true
+rsync_from_remote "~/$REMOTE_LOG_REL/default.svf" "$LOCAL_LOG/default.svf" || true
 rsync_from_remote "~/$REMOTE_SYN_REL/gates.v" "$LOCAL_SYN/gates.v" || true

@@ -1,4 +1,2 @@
 rtl/param_pkg.sv
-rtl/part1/mac_pipe.sv
-tb/part1/mac_tb.sv
-tb/part1/mac_tb.c
+rtl/part1/mac.sv

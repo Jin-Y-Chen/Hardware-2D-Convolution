@@ -13,10 +13,10 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cad_common.sh"
 
 declare -A TREE_EXTRAS
-TREE_EXTRAS[rtl]=""
+TREE_EXTRAS[rtl]="--exclude /command.log --exclude /default.svf --exclude *.svf"
 TREE_EXTRAS[tb]="--exclude /README.md --exclude /part1/params.sv --exclude /part1/simParams1 --exclude /part1/genParams1 --exclude /part1/wave.do"
 TREE_EXTRAS[sim]="--exclude /part1/params.sv"
-TREE_EXTRAS[syn]="--exclude /params.sv"
+TREE_EXTRAS[syn]="--exclude /params.sv --exclude /command.log --exclude /default.svf --exclude *.svf"
 TREE_EXTRAS[constraint]=""
 TREE_EXTRAS[log]="--exclude /README.md"
 
@@ -68,6 +68,16 @@ rm -f "\$HOME/$REMOTE_PROJECT_REL/tb/part1/params.sv" \
       "\$HOME/$REMOTE_PROJECT_REL/tb/part1/wave.do" \
       "\$HOME/$REMOTE_PROJECT_REL/sim/part1/params.sv" \
       "\$HOME/$REMOTE_PROJECT_REL/syn/params.sv"
+# DC junk belongs in log/, not rtl/ or syn/.
+mkdir -p "\$HOME/$REMOTE_PROJECT_REL/log"
+for f in command.log default.svf; do
+    for d in rtl syn; do
+        src="\$HOME/$REMOTE_PROJECT_REL/\$d/\$f"
+        if [ -f "\$src" ]; then
+            mv -f "\$src" "\$HOME/$REMOTE_PROJECT_REL/log/\$f"
+        fi
+    done
+done
 REMOTE
 echo
 echo "  CAD -> host   (new names only; host files kept)"
