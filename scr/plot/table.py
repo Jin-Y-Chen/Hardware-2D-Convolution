@@ -166,8 +166,15 @@ def main() -> None:
     if not row["design"]:
         raise SystemExit(f"no TOP_MOD_NAME in {log_path}")
     out = PART / f"{row['design']}.csv"
-    upsert(out, row)
-    print(relpath(out).as_posix())
+    rows = upsert(out, row)
+    src = relpath(log_path).as_posix()
+    dst = relpath(out).as_posix()
+    timing = row.get("timing") or ("MET" if row.get("met") == "1" else "VIOLATED")
+    print(
+        f"plot: {src} → {dst}  "
+        f"({row['design']}  {row['period_ns']} ns  {timing}  {len(rows)} row"
+        f"{'s' if len(rows) != 1 else ''})"
+    )
 
 
 if __name__ == "__main__":
