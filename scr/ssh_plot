@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Scan log/vsyn.log into data/part/<top>.csv.  Usage:  plot
+# Host-only (no CAD). Run after vsyn so the local log is current.
+
+set -euo pipefail
+
+SCR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PY="$SCR/plot/table.py"
+
+show_menu() {
+    cat <<'EOF'
+plot  [log]
+
+  Reads log/vsyn.log (or a path you pass) and upserts
+  data/part/<top>.csv  — <top> is TOP_MOD_NAME from the log.
+
+  vsyn mac
+  plot
+  vsyn --period 2 mac
+  plot
+
+  -h, --help     this text
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) show_menu; exit 0 ;;
+        -*) echo "Unknown option: $1" >&2; show_menu >&2; exit 2 ;;
+        *) break ;;
+    esac
+done
+
+[[ -f "$PY" ]] || { echo "plot: missing $PY" >&2; exit 1; }
+
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON=python3
+elif command -v python >/dev/null 2>&1; then
+    PYTHON=python
+else
+    echo "plot: python3 not found" >&2
+    exit 1
+fi
+
+"$PYTHON" "$PY" "$@"
