@@ -4,10 +4,10 @@
 set CLK_NAME "clk";
 set CLK_PERIOD 1;
 set RST_NAME "reset";
-set TOP_MOD_NAME "mac";
+set TOP_MOD_NAME "mac_pipe";
 set P_WIDTH 16;
 set P_ACCW 48;
-set SRC_FILE [list "../rtl/param_pkg.sv" "../rtl/part1/mac.sv"];
+set SRC_FILE [list "../rtl/param_pkg.sv" "../rtl/part1/mac_pipe.sv"];
 # Multiple sources: set SRC_FILE [list "file1.sv" "file2.sv"];
 ###############################################
 

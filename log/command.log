@@ -1,6 +1,6 @@
 #@ # 
 #@ # Running dc_shell Version U-2022.12-SP7-2 for linux64 -- Jan 30, 2024
-#@ # Date:   Wed Sep 30 22:04:28 2026
+#@ # Date:   Fri Oct  2 13:19:59 2026
 #@ # Run by: jinchen@lab40.ece.stonybrook.edu
 #@ 
 
@@ -8686,6 +8686,8 @@ source -echo -verbose /home/home5/jinchen/ese507/project/syn/runsynth.tcl
 #@ set CLK_PERIOD 1;
 #@ set RST_NAME "reset";
 #@ set TOP_MOD_NAME "mac_pipe";
+#@ set P_WIDTH 16;
+#@ set P_ACCW 48;
 #@ set SRC_FILE [list "../rtl/param_pkg.sv" "../rtl/part1/mac_pipe.sv"];
 #@ # Multiple sources: set SRC_FILE [list "file1.sv" "file2.sv"];
 #@ ###############################################
@@ -8705,15 +8707,15 @@ source -echo -verbose /home/home5/jinchen/ese507/project/syn/runsynth.tcl
 #@ 
 #@ # -- End source setupdc.tcl
 
-#@ # `include "params.sv" — DC searches these dirs, not only the .sv's folder.
-#@ set search_path [concat ../sim/part1 ../rtl ../rtl/part1 . $search_path]
-#@ set hdlin_include_dir_path "../sim/part1 ../rtl ."
+#@ # params.sv lives in constraint/param (not next to the RTL).
+#@ set search_path [concat ../constraint/param ../rtl ../rtl/part1 . $search_path]
+#@ set hdlin_include_dir_path "../constraint/param ../rtl ."
 #@ file mkdir work_synth
 #@ date
 #@ pid
 #@ pwd
 #@ getenv USER
-#@ getenv HOSTNAME
+#@ catch {getenv HOSTNAME}
 #@ 
 #@ 
 #@ # optimize FSMs
@@ -8722,7 +8724,8 @@ source -echo -verbose /home/home5/jinchen/ese507/project/syn/runsynth.tcl
 #@ 
 #@ define_design_lib WORK -path work_synth
 #@ analyze $SRC_FILE -format sverilog
-#@ elaborate -work WORK $TOP_MOD_NAME
+#@ # Module defaults in mac.sv are not the constraint file; pass WIDTH/ACCW from params.sv.
+#@ elaborate -work WORK $TOP_MOD_NAME -parameters "WIDTH=$P_WIDTH,ACCW=$P_ACCW"
 #@ 
 #@ ###### CLOCKS AND PORTS #######
 #@ set CLK_PORT [get_ports $CLK_NAME]

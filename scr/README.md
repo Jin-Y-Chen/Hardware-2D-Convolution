@@ -78,13 +78,13 @@ ssh-add ~/.ssh/id_ed25519_sbu
 From the repository root:
 
 ```bash
-chmod +x scr/ssh_link scr/ssh_vlog scr/ssh_vsim scr/ssh_vsyn
-sed -i 's/\r$//' scr/ssh_link scr/ssh_vlog scr/ssh_vsim scr/ssh_vsyn scr/env.sh scr/cad_common.sh
+chmod +x scr/ssh_link scr/ssh_vlog scr/ssh_vsim scr/ssh_vsyn scr/ssh_plot
+sed -i 's/\r$//' scr/ssh_link scr/ssh_vlog scr/ssh_vsim scr/ssh_vsyn scr/ssh_plot scr/env.sh scr/cad_common.sh
 
 source scr/env.sh
 ```
 
-`link` / `vlog` / `vsim` / `vsyn` are **functions** from that `source`. If you skip it, `link` is some other program (`Usage: link FILE1 FILE2`). After `source`, `type link` should show `link is a function`.
+`link` / `vlog` / `vsim` / `vsyn` / `plot` are **functions** from that `source`. If you skip it, `link` is some other program (`Usage: link FILE1 FILE2`). After `source`, `type link` should show `link is a function`.
 
 Without sourcing, run `./scr/ssh_link`.
 
@@ -95,7 +95,10 @@ scr/
 ├── ssh_link           rtl/ tb/ sim/ syn/ constraint/ host-master; log/ from CAD  (command: link)
 ├── ssh_vlog           Questa compile  (command: vlog)
 ├── ssh_vsim           Questa simulate (command: vsim)
-└── ssh_vsyn           Design Compiler (command: vsyn)
+├── ssh_vsyn           Design Compiler (command: vsyn)
+├── ssh_plot           scan log/vsyn.log → data/part/<top>.csv (command: plot)
+└── plot/
+    └── table.py       pandas/csv upsert used by plot
 ```
 
 Typical cycle:
@@ -105,6 +108,7 @@ source scr/env.sh
 link          # rtl/, tb/, sim/, syn/, constraint/, log/
 vsim mac_tb_mod mac_pipe   # or: vsim mac_tb mac
 vsyn mac
+plot          # CSV from log/vsyn.log → data/part/mac.csv
 ```
 
 ```text
@@ -195,4 +199,14 @@ RTL only (no testbench). `vsyn <top>` writes `syn/runsynth.tcl` then runs it on 
 ```bash
 vsyn mac
 vsyn mac_pipe
+```
+
+`log/vsyn.log` is the DC transcript. `vsyn` does not write CSVs.
+
+### plot
+
+Host-only. Reads `log/vsyn.log` and upserts `data/part/<top>.csv`.
+
+```bash
+plot
 ```
