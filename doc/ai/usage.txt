@@ -107,4 +107,8 @@ Date: 9/27,
 
     R: Did not pipeline the input_valid through the first register
 
+Date: 10/2
+    ---------------------------------------------------
+    Q: *Suggest alternative header and subheading name to better organize the question report
 
+    R: *Some question is reordered and instruction of where the answer per question may be required
