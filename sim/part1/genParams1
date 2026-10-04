@@ -1,34 +1,22 @@
 #!/usr/bin/bash
 
-# Write a param.sv from WIDTH ACCW PIPELINED, using ../../rtl/param.sv as the template.
-# rtl/param.sv itself is never modified.
-# usage: ./genParams1 [WIDTH] [ACCW] [PIPELINED] [OUT]
+# script to generate the params.sv file based on the command line parameters
+# usage: ./genParams1 [WIDTH] [ACCW] [PIPELINED]
+#    where you will replace [WIDTH] [ACCW] and [PIPELINED] with the desired value of
+#    those parameters
 #      - WIDTH is the bitwidth of the MAC inputs and of the MAC output
 #        (2 <= WIDTH < 32)
 #      - ACCW is the bitwidth of the MAC's accumulator
 #        (ACCW must be >= 2*WIDTH and <= 80)
-#      - PIPELINED is 0 (mac) or 1 (mac_pipe)
-#      - OUT is the file to write (default: ./param.sv)
 
-# example: ./genParams1 8 24 0
-#          ./genParams1 8 24 0 /tmp/run1/param.sv
+# example: for WIDTH=8, ACCW=24, PIPELINED=0, run: ./genParams1 8 24 0
 
-if [ $# -ne 3 ] && [ $# -ne 4 ]; then
+if [ $# -ne 3 ]; then
     echo "ERROR: incorrect number of parameters given."
-    echo "Usage: ./genParams1 [WIDTH] [ACCW] [PIPELINED] [OUT]"
+    echo "Usage: ./genParams1 [WIDTH] [ACCW] [PIPELINED]"
     echo "See comments in genParams1 file for more information"
-    exit 1
+else
+    echo "\`define WIDTHVAL $1" > params.sv
+    echo "\`define ACCWVAL $2" >> params.sv
+    echo "\`define PIPELINEDVAL $3" >> params.sv
 fi
-
-DIR="$(cd "$(dirname "$0")" && pwd)"
-TEMPLATE="$DIR/../../rtl/param.sv"
-OUT="${4:-param.sv}"
-
-# Replace the numbers in `localparam int NAME = <n>;`
-num='[[:space:]]*=[[:space:]]*)[0-9]+'
-sed -E \
-    -e "s/^([[:space:]]*localparam int WIDTH$num/\1$1/" \
-    -e "s/^([[:space:]]*localparam int ACCW$num/\1$2/" \
-    -e "s/^([[:space:]]*localparam int PIPELINED$num/\1$3/" \
-    "$TEMPLATE" > "$OUT" || exit 1
-echo "Wrote $OUT (WIDTH=$1 ACCW=$2 PIPELINED=$3)"

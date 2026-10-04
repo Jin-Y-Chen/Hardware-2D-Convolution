@@ -1,8 +1,8 @@
-import param_pkg::*;
+import param::*;
 
 module pre_accum_ff #(
-    parameter WIDTH = 16,
-    parameter ACCW = 48
+    parameter WIDTH = param::WIDTH,
+    parameter ACCW  = param::ACCW
 )(
     input clk, reset, 
 
@@ -33,8 +33,8 @@ module pre_accum_ff #(
 endmodule 
 
 module accum_post_ff #(
-    parameter WIDTH = 16,
-    parameter ACCW = 48
+    parameter WIDTH = param::WIDTH,
+    parameter ACCW  = param::ACCW
 ) (
     input clk, reset, en, load_init,
     input [6:0] in_Q,
@@ -73,8 +73,8 @@ different behaviors at two different latencies.
 
 */
 module mac_pipe #(
-    parameter WIDTH = 16,
-    parameter ACCW = 48
+    parameter WIDTH = param::WIDTH,
+    parameter ACCW  = param::ACCW
 )(
     input logic signed [WIDTH-1:0] input0, input1, init_value,
     input [6:0] Q,

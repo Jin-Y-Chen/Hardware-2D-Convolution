@@ -1,0 +1,21 @@
+{
+  "note": "Edit this file. vlog reads it, regenerates rtl/param.sv, and compiles design.files. vsim and vsyn compile through vlog. vsyn copies syn.clk, syn.rst, and syn.period_ns into syn/runsynth.tcl.",
+  "design": {
+    "WIDTH": 24,
+    "ACCW": 48,
+    "PIPELINED": 1,
+    "files": [
+      "rtl/part1/mac.sv",
+      "rtl/part1/mac_pipe.sv"
+    ]
+  },
+  "sim": {
+    "seed": "507"
+  },
+  "syn": {
+    "clk": "clk",
+    "rst": "reset",
+    "period_ns": 1.3
+  }
+}
+
