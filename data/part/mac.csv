@@ -1,2 +1,0 @@
-design,width,accw,period_ns,freq_mhz,area_um2,dyn_mw,leak_uw,total_mw,slack_ns,met,path_start,path_end,timing
-mac,16,48,1,1000,2529.13,2.3848,57.142,2.44194,-0.22,0,input0[7],acc_reg[38],VIOLATED

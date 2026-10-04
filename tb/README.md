@@ -2,4 +2,4 @@ Testbenches used by the simulator. Same part folders as `rtl/` (`part1/`, later 
 
 **part1:** `mac_tb.sv`, `mac_tb.c`, `mac_tb_mod.sv`, `mac_tb_mod.c`
 
-`params.sv` lives in `constraint/param/`. `genParams1` / `simParams1` / `wave.do` live in `sim/part1/`.
+WIDTH / ACCW / PIPELINED come from `rtl/param.sv`, which `vlog` generates from `design` in `constraint/all_config.json`. `PIPELINED` selects `mac` (0) or `mac_pipe` (1).

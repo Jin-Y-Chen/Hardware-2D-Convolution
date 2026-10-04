@@ -1,27 +1,22 @@
 #!/usr/bin/env bash
-# Link rtl/, tb/, sim/, syn/, constraint/, and log/ with CAD.
-#   rtl/ tb/ sim/ syn/ constraint/: host is master
-#     1) push host -> remote: same-name files take the host copy (no --delete)
-#     2) pull remote -> host: only new / different names (host files kept)
-#   log/: remote is master (CAD writes transcripts; host only reads)
-#     pull remote -> host and overwrite local transcripts (no push)
-# Tool junk (work/, waves, Questa leftovers) is never copied.
-#   link
+# link — push rtl/ tb/ sim/ syn/ constraint/; pull new names; overwrite log/ from CAD.
 
 set -euo pipefail
-# shellcheck source=cad_common.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cad_common.sh"
+# shellcheck source=libaray/cad_common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/libaray/cad_common.sh"
 
+# Extra rsync excludes per tree. Paths are relative to that folder.
+# Tool junk (work/, *.svf, command.log, …) is already dropped in cad_common.sh.
 declare -A TREE_EXTRAS
 TREE_EXTRAS[rtl]="--exclude /command.log --exclude /default.svf --exclude *.svf"
 TREE_EXTRAS[tb]="--exclude /README.md --exclude /part1/params.sv --exclude /part1/simParams1 --exclude /part1/genParams1 --exclude /part1/wave.do"
-TREE_EXTRAS[sim]="--exclude /part1/params.sv"
+TREE_EXTRAS[sim]="--exclude /part1/params.sv --exclude /part1/param.sv"   # old genParams1 output
 TREE_EXTRAS[syn]="--exclude /params.sv --exclude /command.log --exclude /default.svf --exclude *.svf"
 TREE_EXTRAS[constraint]=""
 TREE_EXTRAS[log]="--exclude /README.md"
 
 # rsync --out-format='%n' → one path per line (skip dir-only "./")
-xfer_summary() {
+link_summary() {
     local out="$1" empty="$2"
     local names
     names=$(printf '%s\n' "$out" | grep -E '[^/]$' | grep -v '^[.]/*$' | tr '\n' ' ' | sed 's/[[:space:]]*$//')
@@ -32,7 +27,8 @@ xfer_summary() {
     fi
 }
 
-sync_one() {
+# mode: push | pull (new names only) | pull-update (overwrite local copies).
+link_tree() {
     local name="$1" mode="$2" empty="$3"
     local local_dir="$PROJECT_ROOT/$name"
     local remote="$REMOTE_USER@$REMOTE_HOST:~/$REMOTE_PROJECT_REL/$name/"
@@ -48,44 +44,29 @@ sync_one() {
     else
         out=$(rsync_project_ssh "$name" "${extras[@]}" --ignore-existing "$remote" "$local_dir/" || true)
     fi
-    printf '    %-4s  %s\n' "$name/" "$(xfer_summary "$out" "$empty")"
+    printf '    %-4s  %s\n' "$name/" "$(link_summary "$out" "$empty")"
 }
+
+# Regenerate rtl/param.sv before the push.
+apply_config
 
 echo "link  host  <->  $REMOTE_NAME  (~/$REMOTE_PROJECT_REL)"
 echo
 echo "  host -> CAD"
-sync_one rtl push        "up to date"
-sync_one tb  push        "up to date"
-sync_one sim push        "up to date"
-sync_one syn push        "up to date"
-sync_one constraint push "up to date"
-# params.sv lives in constraint/param only. Drop leftover copies so pull
-# --ignore-existing cannot restore them on the host.
-ssh_cad <<REMOTE
-rm -f "\$HOME/$REMOTE_PROJECT_REL/tb/part1/params.sv" \
-      "\$HOME/$REMOTE_PROJECT_REL/tb/part1/simParams1" \
-      "\$HOME/$REMOTE_PROJECT_REL/tb/part1/genParams1" \
-      "\$HOME/$REMOTE_PROJECT_REL/tb/part1/wave.do" \
-      "\$HOME/$REMOTE_PROJECT_REL/sim/part1/params.sv" \
-      "\$HOME/$REMOTE_PROJECT_REL/syn/params.sv"
-# DC junk belongs in log/, not rtl/ or syn/.
-mkdir -p "\$HOME/$REMOTE_PROJECT_REL/log"
-for f in command.log default.svf; do
-    for d in rtl syn; do
-        src="\$HOME/$REMOTE_PROJECT_REL/\$d/\$f"
-        if [ -f "\$src" ]; then
-            mv -f "\$src" "\$HOME/$REMOTE_PROJECT_REL/log/\$f"
-        fi
-    done
-done
-REMOTE
+link_tree rtl push        "up to date"
+link_tree tb  push        "up to date"
+link_tree sim push        "up to date"
+link_tree syn push        "up to date"
+link_tree constraint push "up to date"
+# Drop leftover params.sv copies so pull cannot restore them.
+remote_tidy
 echo
 echo "  CAD -> host   (new names only; host files kept)"
-sync_one rtl pull        "no new files"
-sync_one tb  pull        "no new files"
-sync_one sim pull        "no new files"
-sync_one syn pull        "no new files"
-sync_one constraint pull "no new files"
+link_tree rtl pull        "no new files"
+link_tree tb  pull        "no new files"
+link_tree sim pull        "no new files"
+link_tree syn pull        "no new files"
+link_tree constraint pull "no new files"
 echo
 echo "  CAD -> host   (log: overwrite local transcripts)"
-sync_one log pull-update "up to date"
+link_tree log pull-update "up to date"

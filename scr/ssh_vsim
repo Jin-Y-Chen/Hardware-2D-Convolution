@@ -1,188 +1,61 @@
 #!/usr/bin/env bash
-# Batch sim on CAD.  Usage:  vsim <top> <dut>
-#   top  mac_tb | mac_tb_mod     (pairs with the same-name .c)
-#   dut  mac    | mac_pipe       (must match PIPELINEDVAL in constraint/param/params.sv)
-# Transcript: log/vsim.log  (same bytes on host and CAD)
+# vsim <testbench> <dut> — compile, then simulate in the console.
 
 set -euo pipefail
-# shellcheck source=cad_common.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cad_common.sh"
+# shellcheck source=libaray/cad_common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/libaray/cad_common.sh"
 
-show_menu() {
+usage() {
     cat <<'EOF'
-vsim  <top>  <dut>
-
-  top   mac_tb       tb/part1/mac_tb.sv      + mac_tb.c       (course)
-        mac_tb_mod   tb/part1/mac_tb_mod.sv  + mac_tb_mod.c   (trace dump)
-
-  dut   mac          rtl/part1/mac.sv        needs PIPELINEDVAL=0 in params.sv
-        mac_pipe     rtl/part1/mac_pipe.sv   needs PIPELINEDVAL=1 in params.sv
+vsim <testbench> <dut>
 
   vsim mac_tb mac
-  vsim mac_tb mac_pipe
-  vsim mac_tb_mod mac
   vsim mac_tb_mod mac_pipe
-  vsim --seed 1896683400 mac_tb_mod mac_pipe
-
-  After editing constraint/param/params.sv, run link so CAD has the new file.
+  vsim --seed 1896683400 mac_tb mac
 
   -h, --help     this text
-  -l, --list     same as no args
-  -s, --seed N   -sv_seed (default: SEEDVAL in constraint/param/params.sv)
+  -s, --seed N   one run (default: sim.seed)
 EOF
 }
 
-need() {
-    echo "$1" >&2
-    echo >&2
-    show_menu >&2
-    exit 2
-}
+hint() { echo "$1" >&2; exit 2; }
 
-# dut name → rtl/part1/<name>.sv
-dut_rtl() {
-    local name="$1"
-    name="${name#./}"
-    name="${name%.sv}"
-    name="${name##*/}"
-    case "$name" in
-        mac|mac_pipe)
-            [[ -f "$LOCAL_RTL/part1/${name}.sv" ]] || return 1
-            echo "$name" "rtl/part1/${name}.sv"
-            ;;
-        *) return 1 ;;
-    esac
-}
-
-TOP=""
-DUT=""
-SEED=""
-SEED_SET=0
-SELECTED=()
-
+TOP="" DUT="" SEED="" SEED_SET=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -h|--help) show_menu; exit 0 ;;
-        -l|--list) show_menu; exit 0 ;;
-        -s|--seed)
-            [[ $# -ge 2 ]] || need "vsim --seed needs a value."
-            SEED="$2"
-            SEED_SET=1
-            shift 2
-            ;;
-        -*) need "Unknown option: $1" ;;
+        -h|--help) usage; exit 0 ;;
+        -s|--seed) [[ $# -ge 2 ]] || hint "vsim --seed <N> <testbench> <dut>"; SEED="$2"; SEED_SET=1; shift 2 ;;
+        -*) hint "vsim <testbench> <dut>" ;;
         *)
-            if [[ -z "$TOP" ]]; then
-                TOP="$1"
-            elif [[ -z "$DUT" ]]; then
-                DUT="$1"
-            else
-                need "Too many arguments."
+            if [[ -z "$TOP" ]]; then TOP="$1"
+            elif [[ -z "$DUT" ]]; then DUT="$1"
+            else hint "vsim <testbench> <dut>"
             fi
-            shift
-            ;;
+            shift ;;
     esac
 done
 
-[[ -n "$TOP" ]] || need "Pick a testbench and a DUT."
-
-case "$TOP" in
-    mac_tb|mac_tb_mod) ;;
-    mac|mac_pipe) need "First argument is the testbench. Try:  vsim mac_tb $TOP" ;;
-    *)            need "Unknown top: $TOP" ;;
+apply_config
+[[ "$SEED_SET" -eq 0 ]] && SEED="$CFG_SEED"
+[[ -n "$TOP" && -n "$DUT" ]] || hint "vsim mac_tb mac"
+TB_FILE="$(locate_src "$TOP")"
+DUT_FILE="$(locate_src "$DUT")"
+DUT="$(basename "$DUT_FILE" .sv)"
+# mac is the combinational DUT (PIPELINED 0); mac_pipe is the pipelined one (PIPELINED 1).
+case "$DUT" in
+    mac)      [[ "$P_PIPE" == 0 ]] || hint "Set design.PIPELINED to 0 in constraint/all_config.json for mac." ;;
+    mac_pipe) [[ "$P_PIPE" == 1 ]] || hint "Set design.PIPELINED to 1 in constraint/all_config.json for mac_pipe." ;;
 esac
-[[ -f "$LOCAL_TB/part1/${TOP}.sv" ]] || need "Missing tb/part1/${TOP}.sv — run link after adding the course TB."
-[[ -f "$LOCAL_CONSTRAINT/param/params.sv" ]] || need "Missing constraint/param/params.sv — edit it, then link."
-read_part1_params
 
-[[ -n "$DUT" ]] || need "Pick a DUT after the testbench."
-resolved="$(dut_rtl "$DUT" || true)"
-[[ -n "$resolved" ]] || need "Unknown DUT: $DUT"
-DUT="${resolved%% *}"
-DUT_FILE="${resolved#* }"
-if [[ "$DUT" == mac && "$P1_PIPE" != 0 ]]; then
-    need "constraint/param/params.sv has PIPELINEDVAL=$P1_PIPE; set it to 0 for mac (or vsim $TOP mac_pipe)."
-fi
-if [[ "$DUT" == mac_pipe && "$P1_PIPE" != 1 ]]; then
-    need "constraint/param/params.sv has PIPELINEDVAL=$P1_PIPE; set it to 1 for mac_pipe (or vsim $TOP mac)."
-fi
+files=("$DUT_FILE" "$TB_FILE")
+[[ -f "$LOCAL_TB/part1/${TOP}.c" ]] && files+=("tb/part1/${TOP}.c")
+cad_vlog "${files[@]}"   # same compile as vlog, then simulate
 
-SELECTED=("$DUT_FILE" "tb/part1/${TOP}.sv")
-[[ -f "$LOCAL_TB/part1/${TOP}.c" ]] && SELECTED+=("tb/part1/${TOP}.c")
-
-resolve_src_files
-if [[ -f "$LOCAL_RTL/param_pkg.sv" && " $FILE_LIST " != *" rtl/param_pkg.sv "* ]]; then
-    FILE_LIST="rtl/param_pkg.sv $FILE_LIST"
-fi
-
+echo "vsim  $TOP  $DUT  seed=$SEED"
+set +e
+remote_py vsim --proj "$REMOTE_PROJECT_REL" --top "$TOP" --seed "$SEED" --pipelined "$P_PIPE"
+rc=$?
+set -e
 mkdir -p "$LOCAL_LOG"
-show_run_context
-printf '%s\n' $FILE_LIST > "$LOCAL_LOG/vlog_files"
-rm -f "$LOCAL_LOG/vsim.log"
-
-# --- reach CAD ---
-set +e
-ssh_cad <<REMOTE
-$REMOTE_CAD_BOOTSTRAP
-
-# --- on CAD: env, paths, leftover cleanup ---
-if [ -z "\${VSIM:-}" ] || [ ! -x "\$VSIM" ]; then
-    echo "ERROR: vsim not found on this host." >&2
-    exit 1
-fi
-if [ -z "\${VLOG:-}" ] || [ ! -x "\$VLOG" ]; then
-    echo "ERROR: vlog not found." >&2
-    exit 1
-fi
-
-PROJ="\$HOME/$REMOTE_PROJECT_REL"
-WORK="\$PROJ/work"
-LOGDIR="\$PROJ/log"
-VLOG_LOG="\$LOGDIR/vlog.log"
-VSIM_LOG="\$LOGDIR/vsim.log"
-mkdir -p "\$LOGDIR"
-cd "\$PROJ"
-rm -f "\$VSIM_LOG" "\$PROJ/rtl/vlog_mac.log" "\$PROJ/rtl/vsim_mac.log" \
-    params.sv rtl/params.sv rtl/part1/params.sv tb/part1/params.sv \
-    sim/part1/params.sv syn/params.sv
-
-if [ ! -f constraint/param/params.sv ]; then
-    echo "ERROR: constraint/param/params.sv missing on CAD. Run link first." >&2
-    exit 1
-fi
-
-if [ "$SEED_SET" -eq 1 ]; then
-    SVSEED="$SEED"
-else
-    SVSEED=\$(python3 -c "import re; t=open('constraint/param/params.sv').read(); m=re.search(r'define SEEDVAL[ \\t]+(\\S+)', t); print(m.group(1) if m else 'random')")
-fi
-# --- on CAD: compile the selected TB + DUT into work/ ---
-# +incdir+constraint/param so the SV include hits the linked file.
-rm -rf "\$WORK"
-"\$VLIB" work >/dev/null 2>&1 || true
-"\$VLOG" -64 -sv -work "\$WORK" +acc +incdir+constraint/param +incdir+tb/part1 +incdir+rtl +incdir+rtl/part1 \
-    $FILE_LIST -l "\$VLOG_LOG" || true
-if ! grep -q "Errors: 0" "\$VLOG_LOG"; then
-    exit 1
-fi
-cd "\$PROJ"
-
-# --- on CAD: simulate and write transcripts under ~/ese507/project/log/ ---
-printf '%s\n' $FILE_LIST > "\$LOGDIR/vlog_files"
-set +e
-"\$VSIM" -64 -c -work "\$WORK" $TOP -sv_seed \$SVSEED -do 'run -all; quit' -l "\$VSIM_LOG" </dev/null
-rc=\$?
-set -e
-exit \$rc
-REMOTE
-vsim_rc=$?
-set -e
-
-# --- back on host: copy CAD log/ into this repo's log/ ---
-rsync_from_remote "~/$REMOTE_LOG_REL/vlog.log" "$LOCAL_LOG/vlog.log" || true
-rsync_from_remote "~/$REMOTE_LOG_REL/vlog_files" "$LOCAL_LOG/vlog_files" || true
-rsync -az --ignore-missing-args \
-    -e "ssh -o ControlMaster=auto -o ControlPath=${SSH_CTL} -o ControlPersist=10m" \
-    "$REMOTE_USER@$REMOTE_HOST:~/$REMOTE_LOG_REL/vsim.log" \
-    "$LOCAL_LOG/vsim.log" 2> >(filter_lab_noise >&2) || true
-exit "$vsim_rc"
+rsync_from_remote "~/$REMOTE_LOG_REL/vsim.log" "$LOCAL_LOG/vsim.log" || true
+exit "$rc"

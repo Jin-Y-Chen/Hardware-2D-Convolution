@@ -1,17 +1,14 @@
 QuestaSim-64 vlog 2023.4_3 Compiler 2024.02 Feb 17 2024
-Start time: 14:55:08 on Oct 01,2026
-vlog -sv -work /home/home5/jinchen/ese507/project/work "+acc" "+incdir+constraint/param" "+incdir+tb/part1" "+incdir+rtl" "+incdir+rtl/part1" rtl/param_pkg.sv rtl/part1/mac_pipe.sv tb/part1/mac_tb.sv tb/part1/mac_tb.c -l /home/home5/jinchen/ese507/project/log/vlog.log 
--- Compiling package param_pkg
+Start time: 04:43:15 on Oct 04,2026
+vlog -sv "+acc" "+incdir+tb/part1" "+incdir+rtl" "+incdir+rtl/part1" rtl/param.sv rtl/part1/mac_pipe.sv 
+-- Compiling package param
 -- Compiling package mac_pipe_sv_unit
--- Importing package param_pkg
+-- Importing package param
 -- Compiling module pre_accum_ff
 -- Compiling module accum_post_ff
 -- Compiling module mac_pipe
--- Compiling package mac_tb_sv_unit
--- Compiling module mac_tb
 
 Top level modules:
-	mac_tb
--- Compiling DPI/PLI C file tb/part1/mac_tb.c
-End time: 14:55:08 on Oct 01,2026, Elapsed time: 0:00:00
+	mac_pipe
+End time: 04:43:15 on Oct 04,2026, Elapsed time: 0:00:00
 Errors: 0, Warnings: 0

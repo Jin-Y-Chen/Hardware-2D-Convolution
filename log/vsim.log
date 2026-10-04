@@ -1,5 +1,9 @@
-# vsim -64 -c -work /home/home5/jinchen/ese507/project/work mac_tb -sv_seed random -do "run -all; quit" -l /home/home5/jinchen/ese507/project/log/vsim.log 
-# Start time: 14:55:09 on Oct 01,2026
+Reading pref.tcl
+
+# 2023.4_3
+
+# vsim -64 -c -work /home/home5/jinchen/ese507/project/work mac_tb -sv_seed random -do "run -all; quit" -GPIPELINED=1 
+# Start time: 02:37:25 on Oct 04,2026
 # ** Note: (vsim-3812) Design is being optimized...
 # ** Warning: (vopt-10587) Some optimizations are turned off because the +acc switch is in effect. This will cause your simulation to run slowly. Please use -access/-debug to maintain needed visibility.
 # ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=0, Warnings=1.
@@ -18,15 +22,15 @@
 # //  18 U.S.C. Section 1905.
 # //
 # Loading sv_std.std
+# Loading work.param(fast)
 # Loading work.mac_tb_sv_unit(fast)
 # Loading work.mac_tb(fast)
-# Loading work.param_pkg(fast)
 # Loading work.mac_pipe_sv_unit(fast)
 # Loading work.mac_pipe(fast)
 # Loading work.pre_accum_ff(fast)
 # Loading work.accum_post_ff(fast)
-# Loading /tmp/jinchen@lab40.ece.stonybrook.edu_dpi_1460356/linux_x86_64_gcc-10.3.0/vsim_auto_compile.so
-# Sv_Seed = 1757665572
+# Loading /tmp/jinchen@lab40.ece.stonybrook.edu_dpi_1616761/linux_x86_64_gcc-10.3.0/vsim_auto_compile.so
+# Sv_Seed = 1676029913
 # run -all
 # --------------------------------------------------------
 # Starting MAC unit simulation:       10000 tests
@@ -35,7 +39,7 @@
 # Accumulator:          48 bits
 # --------------------------------------------------------
 # Simulated       10000 tests. Detected           0 errors.
-# ** Note: $finish    : tb/part1/mac_tb.sv(238)
+# ** Note: $finish    : tb/part1/mac_tb.sv(235)
 #    Time: 100096 ns  Iteration: 0  Instance: /mac_tb
-# End time: 14:55:09 on Oct 01,2026, Elapsed time: 0:00:00
+# End time: 02:37:25 on Oct 04,2026, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 1
