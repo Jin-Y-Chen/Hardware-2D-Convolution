@@ -1,83 +1,29 @@
 #!/usr/bin/env bash
-# Compile selected RTL on CAD with vlog.
-#   vlog mac
-#   vlog mac_pipe
-#   vlog part1/mac.sv
-# Transcript: log/vlog.log  (look for Errors: 0)
+# vlog — compile on CAD. Run link first so rtl/ and tb/ are already there.
 
 set -euo pipefail
-# shellcheck source=cad_common.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/cad_common.sh"
+# shellcheck source=libaray/cad_common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/libaray/cad_common.sh"
 
 usage() {
     cat <<'EOF'
-Usage:  vlog [options] <top|file> [<file> ...]
+vlog [file ...]
 
+  Run link first. vlog does not sync rtl/ or tb/.
+
+  vlog                         design.files from all_config.json
+  vlog rtl/part1/mac.sv        that file (param.sv is still first)
   vlog mac
-  vlog mac_pipe
-  vlog --list
-  vlog part1/mac.sv
-  vlog --all
 
-  -h, --help    this message
-  -l, --list    list rtl/ and tb/ sources
-  -a, --all     every rtl/ and tb/ .sv/.c
+  -h, --help    this text
 EOF
 }
 
-WANT_ALL=0
-SELECTED=()
+[[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; exit 0; }
 
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -h|--help) usage; exit 0 ;;
-        -l|--list) echo "Sources:"; list_src; exit 0 ;;
-        -a|--all)  WANT_ALL=1; shift ;;
-        --) shift; SELECTED+=("$@"); break ;;
-        -*) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
-        *) SELECTED+=("$1"); shift ;;
-    esac
-done
-
-resolve_src_files
-if [[ -f "$LOCAL_RTL/param_pkg.sv" && " $FILE_LIST " != *" rtl/param_pkg.sv "* ]]; then
-    FILE_LIST="rtl/param_pkg.sv $FILE_LIST"
+files=("$@")
+# No arguments: compile design.files from constraint/all_config.json.
+if [[ ${#files[@]} -eq 0 ]]; then
+    mapfile -t files < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))["design"]["files"]))' "$ALL_CONFIG")
 fi
-mkdir -p "$LOCAL_LOG"
-show_run_context
-
-set +e
-ssh_cad <<REMOTE
-$REMOTE_CAD_BOOTSTRAP
-if [ -z "\${VLOG:-}" ] || [ ! -x "\$VLOG" ]; then
-    echo "ERROR: vlog not found on this host." >&2
-    exit 1
-fi
-
-PROJ="\$HOME/$REMOTE_PROJECT_REL"
-LOGDIR="\$PROJ/log"
-LOG="\$LOGDIR/vlog.log"
-mkdir -p "\$LOGDIR"
-rm -f "\$PROJ/rtl/vlog_mac.log" "\$PROJ/rtl/vsim_mac.log"
-cd "\$PROJ"
-rm -f params.sv rtl/params.sv rtl/part1/params.sv tb/part1/params.sv \
-    sim/part1/params.sv syn/params.sv
-"\$VLIB" work >/dev/null 2>&1 || true
-
-FILES="$FILE_LIST"
-"\$VLOG" -64 -sv +acc +incdir+constraint/param +incdir+tb/part1 +incdir+rtl +incdir+rtl/part1 \$FILES -l "\$LOG" || true
-
-if ! grep -q "Errors: 0" "\$LOG"; then
-    exit 1
-fi
-printf '%s\n' \$FILES | tee "\$PROJ/work/.vlog_files" > "\$LOGDIR/vlog_files"
-REMOTE
-vlog_rc=$?
-set -e
-
-rsync_from_remote "~/$REMOTE_LOG_REL/vlog.log" "$LOCAL_LOG/vlog.log" || true
-rsync_from_remote "~/$REMOTE_LOG_REL/vlog_files" "$LOCAL_LOG/vlog_files" || true
-if [[ ! -f "$LOCAL_LOG/vlog_files" ]]; then
-    printf '%s\n' $FILE_LIST > "$LOCAL_LOG/vlog_files"
-fi
-exit "$vlog_rc"
+cad_vlog "${files[@]}"

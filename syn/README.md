@@ -1,3 +1,11 @@
-Synthesis scripts and generated netlist (`gates.v`).
+Synthesis scripts and the generated netlist.
 
-`runsynth.tcl` is the DC script. `vsyn mac` fills `TOP_MOD_NAME` and `SRC_FILE` for that top. `setupdc.tcl` is the course library setup (stays on CAD).
+`vsyn <top>` compiles that DUT, fills `TOP_MOD_NAME`, `SRC_FILE`, and the clock settings in `runsynth.tcl` from `constraint/all_config.json`, and runs `dc_shell -f runsynth.tcl` on CAD. `setupdc.tcl` is the course library setup and stays on CAD.
+
+Pulled back after a run:
+
+| File | What it is |
+|---|---|
+| `gates.v` | synthesized netlist |
+| `command.log` | Design Compiler command transcript |
+| `default.svf` | Formality setup written by DC |

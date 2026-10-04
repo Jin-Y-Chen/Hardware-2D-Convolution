@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# pplot <file> <x-axis> <y-axis> [MET]
+# pplot [mac, mac_pipe] freq_MHz area_um2 MET
+
+set -euo pipefail
+SCR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec python3 "$SCR/libaray/plot.py" "$@"

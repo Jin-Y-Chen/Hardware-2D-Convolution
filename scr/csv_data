@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# plot — append log/vsyn.log to data/part1/<top>.csv. Host only.
+# pdata — append log/vsyn.log to data/part1/<top>.csv. Host only.
 
 set -euo pipefail
 SCR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
