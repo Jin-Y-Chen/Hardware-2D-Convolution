@@ -1,3 +1,4 @@
+# Waveforms for an interactive Questa session of mac_tb. Console `vsim` does not source this file.
 onerror {resume}
 quietly WaveActivateNextPane {} 0
 add wave -noupdate /mac_tb/clk

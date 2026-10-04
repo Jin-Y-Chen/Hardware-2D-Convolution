@@ -1,6 +1,6 @@
 Tool output log and working files.
 
-These are copied back from CAD after each remote run. They are generated; do not edit by hand.
+These are copied back from CAD after each remote run. They are generated; do not edit by hand. Design Compiler also writes `syn/command.log` and `syn/default.svf`; those stay in `syn/`.
 
 | File | From | What to check |
 |---|---|---|

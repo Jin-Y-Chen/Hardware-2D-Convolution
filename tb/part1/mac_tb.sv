@@ -10,8 +10,8 @@
 //      [options]:
 //       - If you want to run in GUI mode, remove -c
 
-// Note that this testbench relies on params.sv, which can be generated
-// using the ./genParams1 script. See instructions in the project description.
+// Note that this testbench takes WIDTH / ACCW / PIPELINED from rtl/param.sv,
+// generated from constraint/all_config.json. Compile param.sv first.
 
 // Please see the project description for a high-level description of this testbench and how to run it. Comments are also included throughout to help understand how the testbench works.
 
@@ -24,9 +24,6 @@ import "DPI-C" function void sim_cycle_unpipelined(input int input0, input int i
                                                    input bit input_valid, input bit init_acc, input bit reset,
                                                    input int Q, input int WIDTH, input int ACCW,
                                                    output longint res);
-
-// Include constraint/param/params.sv (WIDTH / ACCW / PIPELINED / SEED)
-`include "params.sv"
 
 // A class to hold one instance of test data and associated control logic.
 // When we call .randomize() on an object of this class, it will randomly
@@ -94,9 +91,9 @@ endclass
 module mac_tb();
 
     parameter TESTS = 10000;             // the number of cycles of input to simulate
-    parameter WIDTH = `WIDTHVAL;         // the number of bits in the inputs and the output
-    parameter ACCW  = `ACCWVAL;          // the number of bits in the accumulator
-    parameter PIPELINED = `PIPELINEDVAL; // 0 for unpipelined design, 1 for pipelined design
+    parameter WIDTH = param::WIDTH;         // the number of bits in the inputs and the output
+    parameter ACCW  = param::ACCW;          // the number of bits in the accumulator
+    parameter PIPELINED = param::PIPELINED;     // 0 = mac, 1 = mac_pipe (design.PIPELINED)
 
     logic clk, reset;
     initial clk = 0;
