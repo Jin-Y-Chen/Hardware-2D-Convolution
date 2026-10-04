@@ -1,38 +1,34 @@
 #!/usr/bin/bash
 
-# Write constraint/param/params.sv from WIDTH ACCW PIPELINED [SEED]
-# usage: ./genParams1 [WIDTH] [ACCW] [PIPELINED] [SEED]
-#    SEED is optional (default: keep SEEDVAL in constraint/param/params.sv, or random)
-#    Paste a failing run's Sv_Seed here to reproduce, e.g. 1896683400
+# Write a param.sv from WIDTH ACCW PIPELINED, using ../../rtl/param.sv as the template.
+# rtl/param.sv itself is never modified.
+# usage: ./genParams1 [WIDTH] [ACCW] [PIPELINED] [OUT]
 #      - WIDTH is the bitwidth of the MAC inputs and of the MAC output
 #        (2 <= WIDTH < 32)
 #      - ACCW is the bitwidth of the MAC's accumulator
 #        (ACCW must be >= 2*WIDTH and <= 80)
+#      - PIPELINED is 0 (mac) or 1 (mac_pipe)
+#      - OUT is the file to write (default: ./param.sv)
 
-# Run from sim/part1. Writes ../../constraint/param/params.sv
 # example: ./genParams1 8 24 0
-# reproduce a seed: ./genParams1 8 24 0 1896683400
+#          ./genParams1 8 24 0 /tmp/run1/param.sv
 
 if [ $# -ne 3 ] && [ $# -ne 4 ]; then
     echo "ERROR: incorrect number of parameters given."
-    echo "Usage: ./genParams1 [WIDTH] [ACCW] [PIPELINED] [SEED]"
+    echo "Usage: ./genParams1 [WIDTH] [ACCW] [PIPELINED] [OUT]"
     echo "See comments in genParams1 file for more information"
     exit 1
 fi
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-PARAM="$DIR/../../constraint/param/params.sv"
-mkdir -p "$(dirname "$PARAM")"
+TEMPLATE="$DIR/../../rtl/param.sv"
+OUT="${4:-param.sv}"
 
-SEED="random"
-if [ -f "$PARAM" ]; then
-    OLD=$(sed -n 's/^`define SEEDVAL //p' "$PARAM" | tr -d '\r')
-    [[ -n "$OLD" ]] && SEED="$OLD"
-fi
-[[ $# -eq 4 ]] && SEED="$4"
-
-echo "\`define WIDTHVAL $1" > "$PARAM"
-echo "\`define ACCWVAL $2" >> "$PARAM"
-echo "\`define PIPELINEDVAL $3" >> "$PARAM"
-echo "\`define SEEDVAL $SEED" >> "$PARAM"
-echo "Wrote constraint/param/params.sv (WIDTH=$1 ACCW=$2 PIPELINED=$3 SEED=$SEED)"
+# Replace the numbers in `localparam int NAME = <n>;`
+num='[[:space:]]*=[[:space:]]*)[0-9]+'
+sed -E \
+    -e "s/^([[:space:]]*localparam int WIDTH$num/\1$1/" \
+    -e "s/^([[:space:]]*localparam int ACCW$num/\1$2/" \
+    -e "s/^([[:space:]]*localparam int PIPELINED$num/\1$3/" \
+    "$TEMPLATE" > "$OUT" || exit 1
+echo "Wrote $OUT (WIDTH=$1 ACCW=$2 PIPELINED=$3)"

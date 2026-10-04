@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
-# script to generate the params.sv file based on the command line parameters, compile the code and testbench, and run simulation
-# usage: ./simParams1 [WIDTH] [ACCW] [PIPELINED] [GUI]
+# script to generate a temporary param.sv from the command line parameters, compile the code and testbench, and run simulation
+# usage: ./simParams1 [WIDTH] [ACCW] [PIPELINED] [GUI] [SEED]
 #    where you will replace [WIDTH] [ACCW] and [PIPELINED] with the desired value of
 #    those parameters
 #      - WIDTH is the bitwidth of the MAC inputs and of the MAC output
@@ -10,14 +10,17 @@
 #        (ACCW must be >= 2*WIDTH and <= 80)
 #    if [GUI] is 0, the simulation will run in waveform mode. If [GUI] is 1, it will
 #    run QuestaSim in GUI mode
+#    [SEED] is optional (default random); pass a run's Sv_Seed to replay it
 
 # Run from sim/part1 on CAD:
 #        ./simParams1 8 24 0 0
 # GUI:   ./simParams1 8 24 0 1 &
+# Seed:  ./simParams1 8 24 0 0 1896683400
 
-# Writes ../../constraint/param/params.sv. Compiles the course TB only
-# (not mac_tb_mod.c; those share DPI names). RTL is ../../rtl/, TB is
-# ../../tb/part1/. +incdir+../../constraint/param for the SV include.
+# genParams1 writes a temporary param.sv for this run only; it is compiled in
+# place of ../../rtl/param.sv (left untouched) and deleted on exit.
+# Compiles the course TB only (not mac_tb_mod.c; those share DPI names).
+# RTL is ../../rtl/, TB is ../../tb/part1/.
 # Sources ese507setup so vlib/vlog/vsim are on PATH even if the parent
 # shell never did (the shebang starts a fresh bash).
 
@@ -31,24 +34,26 @@ find_questa() {
     command -v vlib >/dev/null 2>&1
 }
 
-if [ $# -ne 4 ]; then
+if [ $# -ne 4 ] && [ $# -ne 5 ]; then
     echo "ERROR: incorrect number of parameters given."
-    echo "Usage: ./simParams1 [WIDTH] [ACCW] [PIPELINED] [GUI]"
+    echo "Usage: ./simParams1 [WIDTH] [ACCW] [PIPELINED] [GUI] [SEED]"
     echo "See comments in simParams1 file for more information"
 else
-    ./genParams1 $1 $2 $3
-    PARAM=../../constraint/param/params.sv
-    SEED=$(sed -n 's/^`define SEEDVAL //p' "$PARAM" | tr -d '\r')
-    [[ -n "$SEED" ]] || SEED=random
-    echo "Using -sv_seed $SEED  (edit SEEDVAL in constraint/param/params.sv to reproduce)"
+    # Per-run param.sv, removed when the script exits
+    RUN_DIR=$(mktemp -d)
+    trap 'rm -rf "$RUN_DIR"' EXIT
+    PARAM="$RUN_DIR/param.sv"
+    bash "$(dirname "$0")/genParams1" $1 $2 $3 "$PARAM" || exit 1
+    SEED="${5:-random}"
+    echo "Using -sv_seed $SEED  (pass the Sv_Seed as a 5th argument to reproduce)"
     if ! find_questa; then
         echo "ERROR: vlib/vlog/vsim not found. Run this on CAD (Questa is not installed locally)." >&2
         exit 1
     fi
     rm -rf work
     vlib work
-    SRCS="../../tb/part1/mac_tb.sv ../../tb/part1/mac_tb.c ../../rtl/param_pkg.sv ../../rtl/part1/*.sv"
-    vlog -64 +acc +incdir+../../constraint/param +incdir+../../rtl +incdir+../../rtl/part1 +incdir+../../tb/part1 $SRCS || exit 1
+    SRCS="$PARAM ../../rtl/part1/*.sv ../../tb/part1/mac_tb.sv ../../tb/part1/mac_tb.c"
+    vlog -64 +acc +incdir+../../rtl +incdir+../../rtl/part1 +incdir+../../tb/part1 $SRCS || exit 1
     if [[ $4 -eq 0 ]]; then
         vsim -64 -sv_seed "$SEED" -c mac_tb -do "run -all; quit"
     else
