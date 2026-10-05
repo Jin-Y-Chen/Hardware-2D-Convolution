@@ -19,6 +19,37 @@ Both design, 'mac' and 'mac\_pipe', were synthesized with WIDTH = 16 and ACCW = 
 
 \subsection{Area and Power}
 
+The unpipelined 'mac' design is synthesized to determined the fastest clock frequency
+that can be reach with WIDTH = 16 and ACCW = 48. The synthesis workflow was automated
+with script that updates the design parameters before running synthesis remotely. The generated
+synthesis log is filter for attributes such as Area, Power, and Timing of the design. For
+conviences of data analysis, these attributes values are stored in a comma-seperated files (csv)
+on every synthesis run. The table-like csv file is a great formate used by python-ploting 
+library that generated the graphs below. For more detail, reference scr/) Only the data points
+that METS the timing constraint in the table are ploted graphs. 
+
+%graphic {Frequency (MHz) on Area (um^2)}
+
+%graphic {Frequency (MHz) on Total Power (uW)}
+
+The Dynamic Power used in Figure {} is define as the sum of "Total Dynamic Power" and "Cell Leakage Power", where
+"Total Dynmaic power" is jsut the sum of "Cell Internal Power" and "Net Switching Power" in the synthesis report. 
+The cell leakage power can almost be neligible compare to the Dynamic power, this could be the case of the small
+area of the design and that the accumulator register is the only memory component for a sigificant leakage power. 
+Given a fixed accumulator width and a constant area at a frequency lower than 166.67 MHz, we can observed the 
+leakage power also remain constant in assoication with the constant area in the table. Thus we can conclude that
+leakage power depend on the area of the design, where the affects of frequency is the result of the slight increase
+in area that correspond to an relative increase in leakage power. 
+
+Thus the trend observed in figure {} of total power is largely contributed by the Dynamic Power in relationship with
+increase in frequency. Therefore, increase in frequency has a linear effect on the amount power required for nets 
+switching and cell internal. In order words, a faster design can perform more operation to consume more
+power compare to a slower design that perform less operation in the same period of time. For this design, the amount
+of power per single clock cycle counsume about 1.8 * 10^-6 uW of power, where power scales one-to-one with frequency. 
+
+
+
+
 % Make two graphs. On both, show 
 % clock frequency on the x­axis; then show area as the y­axis on one graph and power as the y­axis on 
 % the other.)
