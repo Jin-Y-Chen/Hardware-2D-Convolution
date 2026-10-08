@@ -1,0 +1,12 @@
+# LaTeX build byproducts (not source)
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.nav
+*.snm
+*.vrb
+svg-inkscape/
