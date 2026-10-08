@@ -147,9 +147,9 @@ def draw(series, x_key, y_key, timing):
             lines.append(f'<line x1="{left}" y1="{py:.2f}" x2="{left + width}" y2="{py:.2f}" stroke="#ccc"/>')
         lines.append(f'<line x1="{left - 4}" y1="{py:.2f}" x2="{left}" y2="{py:.2f}" stroke="#222"/>')
         lines.append(f'<text x="{left - 8}" y="{py + 4:.2f}" text-anchor="end" font-size="11">{tick_label(value)}</text>')
-    lines.append(f'<text x="{left + width / 2}" y="{PANEL_H + legend_h - 8}" text-anchor="middle" font-size="12">{esc(LABEL.get(x_key, x_key))}</text>')
+    lines.append(f'<text x="{left + width / 2}" y="{PANEL_H + legend_h - 8}" text-anchor="middle" font-size="12">{esc(LABEL.get(x_key, x_key.replace("_", " ")))}</text>')
     lines.append(
-        f'<text transform="translate(16 {top + height / 2}) rotate(-90)" text-anchor="middle" font-size="12">{esc(LABEL.get(y_key, y_key))}</text>'
+        f'<text transform="translate(16 {top + height / 2}) rotate(-90)" text-anchor="middle" font-size="12">{esc(LABEL.get(y_key, y_key.replace("_", " ")))}</text>'
     )
     for index, (name, points) in enumerate(series):
         color = COLORS[index % len(COLORS)]
@@ -159,7 +159,7 @@ def draw(series, x_key, y_key, timing):
         if len(series) > 1:
             ly = PAD_T + 4 + index * 16
             lines.append(mark(shape, left + 6, ly - 4, color))
-            lines.append(f'<text x="{left + 16}" y="{ly}" font-size="12">{esc(name)}</text>')
+            lines.append(f'<text x="{left + 16}" y="{ly}" font-size="12">{esc(name.replace("_", "-"))}</text>')
     names = "_".join(name for name, _ in series)
     suffix = f"_{timing}" if timing else ""
     out = PART / f"{names}_{x_key}_{y_key}{suffix}.svg"

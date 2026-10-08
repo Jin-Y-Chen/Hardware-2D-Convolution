@@ -29,7 +29,7 @@
             Inclusivity and Diversity" (Refer to article 000036315 at
                         https://solvnetplus.synopsys.com)
 Initializing...
-Current time:       Sun Oct  4 04:43:17 2026
+Current time:       Thu Oct  8 11:52:32 2026
 Hostname:           lab40.ece.stonybrook.edu
 CPU Model:          13th Gen Intel(R) Core(TM) i7-13700
 CPU Details:        Cores = 24 : Sockets = 1 : Cache Size = 30720 KB : Freq = 2.10 GHz
@@ -38,10 +38,10 @@ RAM:                 30 GB (Free   3 GB)
 Swap:                15 GB (Free  15 GB)
 Work Filesystem:    /home/home5 mounted to lehmsrv0:/export/home5
 Tmp Filesystem:     / mounted to /dev/mapper/rhel-root
-Work Disk:          4755 GB (Free 1644 GB)
+Work Disk:          4716 GB (Free 1596 GB)
 Tmp Disk:           786 GB (Free 110 GB)
 
-CPU Load: 1%, Ram Free: 3 GB, Swap Free: 15 GB, Work Disk Free: 1644 GB, Tmp Disk Free: 110 GB
+CPU Load: 0%, Ram Free: 3 GB, Swap Free: 15 GB, Work Disk Free: 1596 GB, Tmp Disk Free: 110 GB
 ##############################################
 # Setup: vsyn <top> fills these for the current top.
 # SRC_FILE paths are relative to syn/.
@@ -68,9 +68,9 @@ set search_path [concat ../rtl ../rtl/part1 . $search_path]
 ../rtl ../rtl/part1 . . ./usrlibs ./lib_code /usr/local/synopsys/syn/libraries/syn /home/home4/pmilder/ese507/synthesis/lib
 file mkdir work_synth
 date
-Sun Oct  4 04:43:17 2026
+Thu Oct  8 11:52:32 2026
 pid
-1650692
+1904577
 pwd
 /home/home5/jinchen/ese507/project/syn
 getenv USER
@@ -158,7 +158,7 @@ set_max_area 0
 ###### RUN #####
 compile_ultra
 Information: Performing leakage power optimization. (PWR-850)
-CPU Load: 1%, Ram Free: 3 GB, Swap Free: 15 GB, Work Disk Free: 1644 GB, Tmp Disk Free: 110 GB
+CPU Load: 0%, Ram Free: 3 GB, Swap Free: 15 GB, Work Disk Free: 1596 GB, Tmp Disk Free: 110 GB
 Alib files are up-to-date.
 Information: Evaluating DesignWare library utilization. (UISN-27)
 
@@ -202,7 +202,7 @@ Loaded alib file './alib-52/NangateOpenCellLibrary_typical.db.alib'
 Information: Ungrouping hierarchy reg1 before Pass 1 (OPT-776)
 Information: Ungrouping hierarchy reg2 before Pass 1 (OPT-776)
 Information: Ungrouping 2 of 3 hierarchies before Pass 1 (OPT-775)
-CPU Load: 1%, Ram Free: 3 GB, Swap Free: 15 GB, Work Disk Free: 1644 GB, Tmp Disk Free: 110 GB
+CPU Load: 0%, Ram Free: 3 GB, Swap Free: 15 GB, Work Disk Free: 1595 GB, Tmp Disk Free: 110 GB
 Information: State dependent leakage is now switched from on to off.
 
   Beginning Pass 1 Mapping
@@ -211,7 +211,7 @@ Information: State dependent leakage is now switched from on to off.
  Implement Synthetic for 'mac_pipe'.
 Information: Added key list 'DesignWare' to design 'mac_pipe'. (DDB-72)
 Information: Command 'do_operand_isolation' is obsolete and is being ignored.  Please refer to the replacement command 'set power_enable_datapath_gating true' instead. (INFO-118)
-CPU Load: 1%, Ram Free: 3 GB, Swap Free: 15 GB, Work Disk Free: 1644 GB, Tmp Disk Free: 110 GB
+CPU Load: 0%, Ram Free: 3 GB, Swap Free: 15 GB, Work Disk Free: 1595 GB, Tmp Disk Free: 110 GB
 
   Updating timing information
 Information: Updating design information... (UID-85)
@@ -225,13 +225,13 @@ Information: Command 'do_operand_isolation' is obsolete and is being ignored.  P
    ELAPSED            WORST NEG   SETUP    DESIGN                              LEAKAGE 
     TIME      AREA      SLACK     COST    RULE COST         ENDPOINT            POWER  
   --------- --------- --------- --------- --------- ------------------------- ---------
-    0:00:03    6457.4      1.06      46.5       0.0                           194405.8125
-    0:00:03    6447.8      1.12      48.1       3.6                           194142.8906
+    0:00:02    6457.4      1.06      46.5       0.0                           194405.8125
+    0:00:02    6447.8      1.12      48.1       3.6                           194142.8906
 
   Beginning Constant Register Removal
   -----------------------------------
-    0:00:03    6526.0      1.41      59.4       0.0                           198276.7344
-    0:00:03    6526.0      1.41      59.4       0.0                           198276.7344
+    0:00:02    6526.0      1.41      59.4       0.0                           198276.7344
+    0:00:02    6526.0      1.41      59.4       0.0                           198276.7344
 
   Beginning Global Optimizations
   ------------------------------
@@ -276,36 +276,36 @@ Information: Command 'do_operand_isolation' is obsolete and is being ignored.  P
   Beginning Delay Optimization
   ----------------------------
     0:00:03    4083.1      0.38      10.0      18.8                           87991.0547
-    0:00:05    4266.1      0.12       2.7      18.8                           94452.2969
-    0:00:05    4266.1      0.12       2.7      18.8                           94452.2969
-    0:00:05    4278.3      0.12       2.7      18.8                           95200.8594
+    0:00:04    4266.1      0.12       2.7      18.8                           94452.2969
+    0:00:04    4266.1      0.12       2.7      18.8                           94452.2969
+    0:00:04    4278.3      0.12       2.7      18.8                           95200.8594
     0:00:05    4274.6      0.12       2.7      18.8                           95111.6172
     0:00:05    4274.6      0.12       2.7      18.8                           95111.6172
 
   Beginning WLM Backend Optimization
   --------------------------------------
-    0:00:06    4222.5      0.12       2.7      18.8                           93009.9609
-    0:00:06    4221.2      0.12       2.7      18.8                           92930.9219
-    0:00:06    4221.2      0.12       2.7      18.8                           92930.9219
-    0:00:06    4234.5      0.12       2.7      18.8                           93504.4062
-    0:00:06    4234.5      0.12       2.7      18.8                           93504.4062
-    0:00:06    4253.9      0.11       2.6      18.8                           94172.0625
-    0:00:06    4253.9      0.11       2.6      18.8                           94172.0625
-    0:00:06    4249.6      0.11       2.6      18.8                           93884.1328
-    0:00:06    4249.6      0.11       2.6      18.8                           93884.1328
-    0:00:07    4251.5      0.11       2.6      18.8                           93970.3672
-    0:00:07    4251.5      0.11       2.6      18.8                           93970.3672
-    0:00:07    4252.0      0.11       2.5      18.8                           94017.6562
-    0:00:07    4252.0      0.11       2.5      18.8                           94017.6562
+    0:00:05    4222.5      0.12       2.7      18.8                           93009.9609
+    0:00:05    4221.2      0.12       2.7      18.8                           92930.9219
+    0:00:05    4221.2      0.12       2.7      18.8                           92930.9219
+    0:00:05    4234.5      0.12       2.7      18.8                           93504.4062
+    0:00:05    4234.5      0.12       2.7      18.8                           93504.4062
+    0:00:05    4253.9      0.11       2.6      18.8                           94172.0625
+    0:00:05    4253.9      0.11       2.6      18.8                           94172.0625
+    0:00:05    4249.6      0.11       2.6      18.8                           93884.1328
+    0:00:05    4249.6      0.11       2.6      18.8                           93884.1328
+    0:00:06    4251.5      0.11       2.6      18.8                           93970.3672
+    0:00:06    4251.5      0.11       2.6      18.8                           93970.3672
+    0:00:06    4252.0      0.11       2.5      18.8                           94017.6562
+    0:00:06    4252.0      0.11       2.5      18.8                           94017.6562
+    0:00:06    4278.3      0.11       2.4      18.8                           94892.6875
+    0:00:06    4278.3      0.11       2.4      18.8                           94892.6875
+    0:00:06    4278.3      0.11       2.4      18.8                           94892.6875
+    0:00:06    4278.3      0.11       2.4      18.8                           94892.6875
     0:00:07    4278.3      0.11       2.4      18.8                           94892.6875
     0:00:07    4278.3      0.11       2.4      18.8                           94892.6875
     0:00:07    4278.3      0.11       2.4      18.8                           94892.6875
     0:00:07    4278.3      0.11       2.4      18.8                           94892.6875
     0:00:07    4278.3      0.11       2.4      18.8                           94892.6875
-    0:00:07    4278.3      0.11       2.4      18.8                           94892.6875
-    0:00:08    4278.3      0.11       2.4      18.8                           94892.6875
-    0:00:08    4278.3      0.11       2.4      18.8                           94892.6875
-    0:00:08    4278.3      0.11       2.4      18.8                           94892.6875
 
 
   Beginning Design Rule Fixing  (max_transition)  (max_capacitance)
@@ -315,12 +315,12 @@ Information: Command 'do_operand_isolation' is obsolete and is being ignored.  P
    ELAPSED            WORST NEG   SETUP    DESIGN                              LEAKAGE 
     TIME      AREA      SLACK     COST    RULE COST         ENDPOINT            POWER  
   --------- --------- --------- --------- --------- ------------------------- ---------
-    0:00:08    4278.3      0.11       2.4      18.8                           94892.6875
+    0:00:07    4278.3      0.11       2.4      18.8                           94892.6875
   Global Optimization (Phase 32)
   Global Optimization (Phase 33)
   Global Optimization (Phase 34)
-    0:00:08    4301.5      0.08       1.7       0.0 reg1/out_product_reg[41]/D 95254.8750
-    0:00:08    4303.9      0.08       1.7       0.0                           95356.7031
+    0:00:07    4301.5      0.08       1.7       0.0 reg1/out_product_reg[41]/D 95254.8750
+    0:00:07    4303.9      0.08       1.7       0.0                           95356.7031
     0:00:08    4337.7      0.09       1.9       0.0                           96472.1875
 
 
@@ -332,28 +332,28 @@ Information: Command 'do_operand_isolation' is obsolete and is being ignored.  P
     TIME      AREA      SLACK     COST    RULE COST         ENDPOINT            POWER  
   --------- --------- --------- --------- --------- ------------------------- ---------
     0:00:08    4337.7      0.09       1.9       0.0                           96472.1875
-    0:00:09    4347.8      0.07       1.4       0.0 reg1/out_product_reg[41]/D 96683.1719
-    0:00:09    4358.4      0.06       1.3       0.0                           97091.3203
+    0:00:08    4347.8      0.07       1.4       0.0 reg1/out_product_reg[41]/D 96683.1719
+    0:00:08    4358.4      0.06       1.3       0.0                           97091.3203
     0:00:09    4417.7      0.06       1.1       0.0                           98924.3203
     0:00:09    4417.7      0.06       1.1       0.0                           98924.3203
     0:00:09    4399.6      0.06       1.1       0.0                           97942.1172
     0:00:09    4399.6      0.06       1.1       0.0                           97942.1172
-    0:00:10    4399.6      0.06       1.1       0.0                           97942.1172
-    0:00:10    4399.6      0.06       1.1       0.0                           97942.1172
-    0:00:10    4401.0      0.06       1.1       0.0                           98039.3828
-    0:00:10    4401.0      0.06       1.1       0.0                           98039.3828
-    0:00:10    4401.0      0.06       1.1       0.0                           98039.3828
-    0:00:10    4401.0      0.06       1.1       0.0                           98039.3828
+    0:00:09    4399.6      0.06       1.1       0.0                           97942.1172
+    0:00:09    4399.6      0.06       1.1       0.0                           97942.1172
+    0:00:09    4401.0      0.06       1.1       0.0                           98039.3828
+    0:00:09    4401.0      0.06       1.1       0.0                           98039.3828
+    0:00:09    4401.0      0.06       1.1       0.0                           98039.3828
+    0:00:09    4401.0      0.06       1.1       0.0                           98039.3828
+    0:00:09    4411.6      0.06       1.1       0.0                           98372.4375
+    0:00:09    4411.6      0.06       1.1       0.0                           98372.4375
     0:00:10    4411.6      0.06       1.1       0.0                           98372.4375
     0:00:10    4411.6      0.06       1.1       0.0                           98372.4375
-    0:00:11    4411.6      0.06       1.1       0.0                           98372.4375
-    0:00:11    4411.6      0.06       1.1       0.0                           98372.4375
-    0:00:11    4411.6      0.06       1.1       0.0                           98372.4375
-    0:00:11    4411.6      0.06       1.1       0.0                           98372.4375
-    0:00:11    4411.6      0.06       1.1       0.0                           98372.4375
-    0:00:11    4411.6      0.06       1.1       0.0                           98372.4375
-    0:00:11    4411.6      0.06       1.1       0.0                           98372.4375
-    0:00:11    4411.6      0.06       1.1       0.0                           98372.4375
+    0:00:10    4411.6      0.06       1.1       0.0                           98372.4375
+    0:00:10    4411.6      0.06       1.1       0.0                           98372.4375
+    0:00:10    4411.6      0.06       1.1       0.0                           98372.4375
+    0:00:10    4411.6      0.06       1.1       0.0                           98372.4375
+    0:00:10    4411.6      0.06       1.1       0.0                           98372.4375
+    0:00:10    4411.6      0.06       1.1       0.0                           98372.4375
     0:00:11    4411.6      0.06       1.1       0.0                           98372.4375
 
                                   TOTAL                                                
@@ -361,18 +361,18 @@ Information: Command 'do_operand_isolation' is obsolete and is being ignored.  P
     TIME      AREA      SLACK     COST    RULE COST         ENDPOINT            POWER  
   --------- --------- --------- --------- --------- ------------------------- ---------
     0:00:11    4411.6      0.06       1.1       0.0                           98372.4375
-    0:00:12    4290.8      0.07       1.1       0.0                           93231.5234
-    0:00:12    4290.8      0.06       1.0       0.0                           93240.0625
-    0:00:12    4290.8      0.06       1.0       0.0                           93240.0625
-    0:00:12    4299.9      0.06       1.0       0.0                           93820.6406
-    0:00:12    4279.4      0.06       1.0       0.0                           93130.0234
-    0:00:13    4306.5      0.06       1.0       0.0                           93827.7578
-    0:00:13    4306.5      0.06       1.0       0.0                           93827.7578
-    0:00:13    4306.8      0.06       1.0       0.0                           93852.3359
-    0:00:13    4306.8      0.06       1.0       0.0                           93852.3359
-    0:00:13    4306.8      0.06       1.0       0.0                           93852.3359
-    0:00:13    4290.3      0.06       1.0       0.0                           93045.3672
-CPU Load: 1%, Ram Free: 3 GB, Swap Free: 15 GB, Work Disk Free: 1644 GB, Tmp Disk Free: 110 GB
+    0:00:11    4290.8      0.07       1.1       0.0                           93231.5234
+    0:00:11    4290.8      0.06       1.0       0.0                           93240.0625
+    0:00:11    4290.8      0.06       1.0       0.0                           93240.0625
+    0:00:11    4299.9      0.06       1.0       0.0                           93820.6406
+    0:00:11    4279.4      0.06       1.0       0.0                           93130.0234
+    0:00:12    4306.5      0.06       1.0       0.0                           93827.7578
+    0:00:12    4306.5      0.06       1.0       0.0                           93827.7578
+    0:00:12    4306.8      0.06       1.0       0.0                           93852.3359
+    0:00:12    4306.8      0.06       1.0       0.0                           93852.3359
+    0:00:12    4306.8      0.06       1.0       0.0                           93852.3359
+    0:00:12    4290.3      0.06       1.0       0.0                           93045.3672
+CPU Load: 0%, Ram Free: 3 GB, Swap Free: 15 GB, Work Disk Free: 1595 GB, Tmp Disk Free: 110 GB
 Loading db file '/home/home4/pmilder/ese507/synthesis/lib/NangateOpenCellLibrary_typical.db'
 
 
@@ -383,7 +383,7 @@ Note: Symbol # after min delay cost means estimated hold TNS across all active s
   ---------------------
 Information: State dependent leakage is now switched from off to on.
 Information: Propagating switching activity (low effort zero delay simulation). (PWR-6)
-CPU Load: 1%, Ram Free: 3 GB, Swap Free: 15 GB, Work Disk Free: 1644 GB, Tmp Disk Free: 110 GB
+CPU Load: 0%, Ram Free: 3 GB, Swap Free: 15 GB, Work Disk Free: 1595 GB, Tmp Disk Free: 110 GB
 Information: Total number of MV cells in the design.
 ----------------------------------------------------------------------------------------------------
  MV Cells                                           Total Number                                   
@@ -410,7 +410,7 @@ report_area
 Report : area
 Design : mac_pipe
 Version: U-2022.12-SP7-2
-Date   : Sun Oct  4 04:43:30 2026
+Date   : Thu Oct  8 11:52:45 2026
 ****************************************
 
 Information: Updating design information... (UID-85)
@@ -443,7 +443,7 @@ Report : power
         -analysis_effort low
 Design : mac_pipe
 Version: U-2022.12-SP7-2
-Date   : Sun Oct  4 04:43:30 2026
+Date   : Thu Oct  8 11:52:45 2026
 ****************************************
 
 
@@ -504,7 +504,7 @@ Report : timing
         -max_paths 1
 Design : mac_pipe
 Version: U-2022.12-SP7-2
-Date   : Sun Oct  4 04:43:30 2026
+Date   : Thu Oct  8 11:52:45 2026
 ****************************************
 
 Operating Conditions: typical   Library: NangateOpenCellLibrary
@@ -570,7 +570,7 @@ Report : timing
         -max_paths 1
 Design : mac_pipe
 Version: U-2022.12-SP7-2
-Date   : Sun Oct  4 04:43:30 2026
+Date   : Thu Oct  8 11:52:45 2026
 ****************************************
 
 Operating Conditions: typical   Library: NangateOpenCellLibrary
@@ -579,7 +579,7 @@ No loops.
 
 1
 date
-Sun Oct  4 04:43:30 2026
+Thu Oct  8 11:52:45 2026
 write -f verilog $TOP_MOD_NAME -output gates.v -hierarchy
 Writing verilog file '/home/home5/jinchen/ese507/project/syn/gates.v'.
 1
