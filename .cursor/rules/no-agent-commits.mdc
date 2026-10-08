@@ -1,0 +1,10 @@
+---
+description: Do not create git commits or credit Cursor on GitHub
+alwaysApply: true
+---
+
+# No agent commits
+
+Do not run `git commit`, `git commit --amend`, or any command that creates or rewrites a commit. Do not stage files for a commit. Leave changes in the working tree for the user to commit.
+
+Do not add `Co-authored-by: Cursor`, `cursoragent@cursor.com`, or `Made-with: Cursor` to commit messages, pull requests, or other GitHub text.

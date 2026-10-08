@@ -65,7 +65,7 @@ A line like `data/part1/mac.csv  mac  10 ns  MET  12 rows` means the table was u
 
 ## pplot
 
-`pplot` scatters two of those columns. The file argument is a name under `data/part1` (`mac` is `data/part1/mac.csv`) or a path to a CSV. `MET` keeps only rows whose `timing` column is `MET`. One file writes `data/part1/<file>_<x>_<y>.svg`. A bracket list shares one graph, named from every file.
+`pplot` scatters two of those columns. The file argument is a name under `data/part1` (`mac` is `data/part1/mac.csv`) or a path to a CSV. `MET` keeps only rows whose `timing` column is `MET`. One file writes `data/part1/<file>_<x>_<y>.pdf`. A bracket list shares one graph, named from every file.
 
 ```bash
 pplot mac freq_MHz area_um2 MET
