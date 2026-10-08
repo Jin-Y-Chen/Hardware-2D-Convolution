@@ -102,37 +102,23 @@ Date: 9/27,
     Q: Synatx error regarding "(" in module instantiation
 
     R: Shows the correct syntax for module instatntiation
-
     ---------------------------------------------------
     Q: *Asking for specific edge cases: the MAC_pipeline output should still update even without all {0,0,0} control signal
 
     R: Did not pipeline the input_valid through the first register
 
-Date: 10/2/27
+Date: 10/2
     ---------------------------------------------------
-    Q: Based on the power report, is the sum of the dynamic and static power the power used per cycle for 1 set of inputs
-
-    R: Dynamic plus leakage is average power (energy per second), not energy per cycle an not energy for one input
-    
-    ---------------------------------------------------
-    Q: Based on the timing report is the slack time the time for 1 set of input? 
-
-    R: Slack is leftover (or missing) time in the clock period of the slowest path after the clock edge.
-    
-    ---------------------------------------------------
-    Q: Then in the case of slack met(0), the time to complete 1 cycle of an input is the clock period that I used
-
-    R: Yes. If slack is MET (critical path used the whole period), the chip can run at the clock you set. One cycle is that period.
-    
-    ---------------------------------------------------
-    Q: Then to calculate the energy required, E = P_av(T(50)), where T(50) = (50 + i)t such that t is the period for slack = MET and i is adjusted/different value of the acutal cycle amount
-
-    R: Yes
+    Q: *Suggest alternative header and subheading name to better organize the question report
 
     R: *Some question is reordered and instruction of where the answer per question may be required
 
-Date: 10/6 
+Date: 10/5 
     ---------------------------------------------------
     Q: *Make edits and wording to the draft of the report, while keeping the content the same
 
     R: *The edits were read with small adjustment in wording, strucuture, and correction
+
+    Q: what does slack (violated: increase significant digits) even with slack time being 0.0
+
+    R: Is still considered a violation, the actual slack value is slightly negative but rounded to zero due to limited number of signifcant digits.
