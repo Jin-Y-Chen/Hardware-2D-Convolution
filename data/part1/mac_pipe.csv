@@ -1,0 +1,2 @@
+design,width,accw,period_ns,freq_MHz,area_um2,dyn_uw,leak_uw,total_uw,slack_ns,timing,path_start,path_end
+mac_pipe,24,48,1.3,769.231,4290.313981,3578.7,94.9809,3673.6809,-0.06,VIOLATED,input0[13],reg1/out_product_reg[39]
