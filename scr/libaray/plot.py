@@ -95,8 +95,17 @@ def esc(text):
 
 
 # mhz would read as millihertz. The column and the axis use MHz.
+# Units are ASCII letters: uW, um2, ns. No µ.
 AXIS = {"freq_mhz": "freq_MHz", "freq_Mhz": "freq_MHz", "freq_mHz": "freq_MHz"}
-LABEL = {"freq_MHz": "Frequency (MHz)", "total_uw": "Total power (µW)"}
+LABEL = {
+    "period_ns": "Period (ns)",
+    "freq_MHz": "Frequency (MHz)",
+    "area_um2": "Area (um2)",
+    "dyn_uw": "Dynamic power (uW)",
+    "leak_uw": "Leakage power (uW)",
+    "total_uw": "Total power (uW)",
+    "slack_ns": "Slack (ns)",
+}
 COLORS = ("#1f4e79", "#c45911", "#548235", "#7030a0")
 USAGE = "pplot <file> <x-axis> <y-axis> [MET]\npplot [mac, mac_pipe] freq_MHz area_um2 MET"
 
