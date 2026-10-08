@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="392" font-family="sans-serif">
+<rect x="72" y="48" width="388" height="292" fill="white" stroke="#222"/>
+<line x1="72.00" y1="340" x2="72.00" y2="344" stroke="#222"/>
+<text x="72.00" y="358" text-anchor="middle" font-size="11">0</text>
+<line x1="120.50" y1="48" x2="120.50" y2="340" stroke="#ccc"/>
+<line x1="120.50" y1="340" x2="120.50" y2="344" stroke="#222"/>
+<text x="120.50" y="358" text-anchor="middle" font-size="11">100</text>
+<line x1="169.00" y1="48" x2="169.00" y2="340" stroke="#ccc"/>
+<line x1="169.00" y1="340" x2="169.00" y2="344" stroke="#222"/>
+<text x="169.00" y="358" text-anchor="middle" font-size="11">200</text>
+<line x1="217.50" y1="48" x2="217.50" y2="340" stroke="#ccc"/>
+<line x1="217.50" y1="340" x2="217.50" y2="344" stroke="#222"/>
+<text x="217.50" y="358" text-anchor="middle" font-size="11">300</text>
+<line x1="266.00" y1="48" x2="266.00" y2="340" stroke="#ccc"/>
+<line x1="266.00" y1="340" x2="266.00" y2="344" stroke="#222"/>
+<text x="266.00" y="358" text-anchor="middle" font-size="11">400</text>
+<line x1="314.50" y1="48" x2="314.50" y2="340" stroke="#ccc"/>
+<line x1="314.50" y1="340" x2="314.50" y2="344" stroke="#222"/>
+<text x="314.50" y="358" text-anchor="middle" font-size="11">500</text>
+<line x1="363.00" y1="48" x2="363.00" y2="340" stroke="#ccc"/>
+<line x1="363.00" y1="340" x2="363.00" y2="344" stroke="#222"/>
+<text x="363.00" y="358" text-anchor="middle" font-size="11">600</text>
+<line x1="411.50" y1="48" x2="411.50" y2="340" stroke="#ccc"/>
+<line x1="411.50" y1="340" x2="411.50" y2="344" stroke="#222"/>
+<text x="411.50" y="358" text-anchor="middle" font-size="11">700</text>
+<line x1="460.00" y1="340" x2="460.00" y2="344" stroke="#222"/>
+<text x="460.00" y="358" text-anchor="middle" font-size="11">800</text>
+<line x1="68" y1="340.00" x2="72" y2="340.00" stroke="#222"/>
+<text x="64" y="344.00" text-anchor="end" font-size="11">0</text>
+<line x1="72" y1="291.33" x2="460" y2="291.33" stroke="#ccc"/>
+<line x1="68" y1="291.33" x2="72" y2="291.33" stroke="#222"/>
+<text x="64" y="295.33" text-anchor="end" font-size="11">500</text>
+<line x1="72" y1="242.67" x2="460" y2="242.67" stroke="#ccc"/>
+<line x1="68" y1="242.67" x2="72" y2="242.67" stroke="#222"/>
+<text x="64" y="246.67" text-anchor="end" font-size="11">1000</text>
+<line x1="72" y1="194.00" x2="460" y2="194.00" stroke="#ccc"/>
+<line x1="68" y1="194.00" x2="72" y2="194.00" stroke="#222"/>
+<text x="64" y="198.00" text-anchor="end" font-size="11">1500</text>
+<line x1="72" y1="145.33" x2="460" y2="145.33" stroke="#ccc"/>
+<line x1="68" y1="145.33" x2="72" y2="145.33" stroke="#222"/>
+<text x="64" y="149.33" text-anchor="end" font-size="11">2000</text>
+<line x1="72" y1="96.67" x2="460" y2="96.67" stroke="#ccc"/>
+<line x1="68" y1="96.67" x2="72" y2="96.67" stroke="#222"/>
+<text x="64" y="100.67" text-anchor="end" font-size="11">2500</text>
+<line x1="68" y1="48.00" x2="72" y2="48.00" stroke="#222"/>
+<text x="64" y="52.00" text-anchor="end" font-size="11">3000</text>
+<text x="266.0" y="384" text-anchor="middle" font-size="12">Frequency (MHz)</text>
+<text transform="translate(16 194.0) rotate(-90)" text-anchor="middle" font-size="12">area_um2</text>
+<circle cx="76.85" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="77.39" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="78.06" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="78.93" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="80.08" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="81.70" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="84.12" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="88.17" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="96.25" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="120.50" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="125.89" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="132.62" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="141.29" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="152.83" cy="138.80" r="4" fill="#1f4e79"/>
+<circle cx="169.00" cy="138.88" r="4" fill="#1f4e79"/>
+<circle cx="193.25" cy="135.39" r="4" fill="#1f4e79"/>
+<circle cx="233.67" cy="129.35" r="4" fill="#1f4e79"/>
+<circle cx="314.50" cy="114.10" r="4" fill="#1f4e79"/>
+<circle cx="327.26" cy="116.05" r="4" fill="#1f4e79"/>
+<circle cx="341.44" cy="115.86" r="4" fill="#1f4e79"/>
+<circle cx="357.29" cy="116.56" r="4" fill="#1f4e79"/>
+<circle cx="375.12" cy="114.08" r="4" fill="#1f4e79"/>
+<circle cx="395.33" cy="112.08" r="4" fill="#1f4e79"/>
+<circle cx="418.43" cy="106.83" r="4" fill="#1f4e79"/>
+<circle cx="445.08" cy="104.06" r="4" fill="#1f4e79"/>
+<circle cx="78.00" cy="16.00" r="4" fill="#1f4e79"/>
+<text x="88" y="20" font-size="12">mac</text>
+<rect x="73.35" y="111.98" width="7" height="7" fill="#c45911"/>
+<rect x="73.89" y="111.98" width="7" height="7" fill="#c45911"/>
+<rect x="74.56" y="112.00" width="7" height="7" fill="#c45911"/>
+<rect x="75.43" y="111.98" width="7" height="7" fill="#c45911"/>
+<rect x="76.58" y="111.98" width="7" height="7" fill="#c45911"/>
+<rect x="78.20" y="112.00" width="7" height="7" fill="#c45911"/>
+<rect x="80.62" y="112.00" width="7" height="7" fill="#c45911"/>
+<rect x="84.67" y="112.00" width="7" height="7" fill="#c45911"/>
+<rect x="92.75" y="112.00" width="7" height="7" fill="#c45911"/>
+<rect x="117.00" y="112.00" width="7" height="7" fill="#c45911"/>
+<rect x="122.39" y="112.00" width="7" height="7" fill="#c45911"/>
+<rect x="129.12" y="112.00" width="7" height="7" fill="#c45911"/>
+<rect x="137.79" y="112.00" width="7" height="7" fill="#c45911"/>
+<rect x="149.33" y="112.00" width="7" height="7" fill="#c45911"/>
+<rect x="165.50" y="112.13" width="7" height="7" fill="#c45911"/>
+<rect x="189.75" y="108.46" width="7" height="7" fill="#c45911"/>
+<rect x="230.17" y="97.11" width="7" height="7" fill="#c45911"/>
+<rect x="311.00" y="78.76" width="7" height="7" fill="#c45911"/>
+<rect x="323.76" y="79.56" width="7" height="7" fill="#c45911"/>
+<rect x="337.94" y="74.38" width="7" height="7" fill="#c45911"/>
+<rect x="353.79" y="74.33" width="7" height="7" fill="#c45911"/>
+<rect x="371.62" y="71.48" width="7" height="7" fill="#c45911"/>
+<rect x="391.83" y="70.55" width="7" height="7" fill="#c45911"/>
+<rect x="414.93" y="71.30" width="7" height="7" fill="#c45911"/>
+<rect x="441.58" y="66.54" width="7" height="7" fill="#c45911"/>
+<rect x="74.50" y="28.50" width="7" height="7" fill="#c45911"/>
+<text x="88" y="36" font-size="12">mac_pipe</text>
+</svg>
