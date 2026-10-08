@@ -330,10 +330,7 @@ The power difference is minimal at lower frequency, but growing at a larger rate
 
 \subsection{Critical Paths}
 
-The start and end points of the critical path for \texttt{mac\_pipe} are reported in Table~\ref{tab:pipe-frequency-area-slack-path}. 
-
-
-Because the multiply-add operation is split across two registers, the critical path may lie in either the multiplier stage (\texttt{reg1}) or the accumulator stage (\texttt{reg2}).
+The start and end points of the critical path for \texttt{mac\_pipe} are reported in Table~\ref{tab:pipe-frequency-area-slack-path}. The additional pipeline register is denoated as (\texttt{reg1}) and the accumulator itself is a register or (\texttt{reg2}). 
 
 \begin{table}[H]
     \centering
@@ -383,7 +380,7 @@ Because the multiply-add operation is split across two registers, the critical p
     \label{tab:pipe-frequency-area-slack-path}
 \end{table}
 
-At low frequencies and up to approximately 200~MHz, the critical path is consistently from bit~[0] to bit~[47] of \texttt{out\_accum\_reg} in \texttt{reg2}. This is the 48-bit adder in the second pipeline stage: the carry chain from the least-significant bit of the accumulator to the most-significant bit. At 250~MHz the start point shifts to bit~[0] of \texttt{out\_product\_reg} in \texttt{reg1}, while the endpoint remains bit~[47] of \texttt{out\_accum\_reg} in \texttt{reg2}. The path is still in the accumulate stage, now starting from the registered product rather than an accumulator bit. From 333.33~MHz through 526.32~MHz the path remains in the accumulate stage, with some variation in the start and end indices of \texttt{out\_accum\_reg}.
+The additional pipeline register splits the multiply-add operation into two stages, then the critical path may lie in either the multiplier stage or the accumulator stage. At low frequencies and up to approximately 200~MHz, the critical path is consistently from bit~[0] to bit~[47] of \texttt{out\_accum\_reg} in \texttt{reg2}. This is the 48-bit adder in the second pipeline stage: the carry chain from the least-significant bit of the accumulator to the most-significant bit. At 250~MHz the start point shifts to bit~[0] of \texttt{out\_product\_reg} in \texttt{reg1}, while the endpoint remains bit~[47] of \texttt{out\_accum\_reg} in \texttt{reg2}. The path is still in the accumulate stage, now starting from the registered product rather than an accumulator bit. From 333.33~MHz through 526.32~MHz the path remains in the accumulate stage, with some variation in the start and end indices of \texttt{out\_accum\_reg}.
 
 Between 555.56~MHz and 714.29~MHz the critical path moves to the multiplier stage, starting from an \texttt{input0} bit and ending at \texttt{reg1/out\_product\_reg}. At 769.23~MHz, the last frequency that meets timing, the path returns to the accumulate stage. Timing violations from 833.33~MHz onward are again on the multiplier path, from \texttt{input0} to \texttt{reg1/out\_product\_reg}. The 833.33~MHz point has a displayed slack of zero but is reported as VIOLATED, which is the same rounded-slack case described for the unpipelined design.
 
