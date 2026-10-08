@@ -82,7 +82,7 @@ As shown in Figure~\ref{fig:mac-area}, the total design area remains relatively 
 
 \begin{figure}[!htbp]
     \plotandtable{%
-        \includegraphics[width=\linewidth]{mac_freq_MHz_area_um2_MET}
+        \includegraphics[width=\linewidth]{mac_freq_MHz_area_um2_MET.pdf}
     }{%
         \caption{Area, frequency for unpipelined \texttt{mac} (MET).}
         \label{fig:mac-area}
@@ -122,7 +122,7 @@ The Total Power shown in Figure~\ref{fig:mac-power} is defined as the sum of Tot
 
 \begin{figure}[!htbp]
     \plotandtable{%
-        \includegraphics[width=\linewidth]{mac_freq_MHz_total_uw_MET}
+        \includegraphics[width=\linewidth]{mac_freq_MHz_total_uw_MET.pdf}
     }{%
         \caption{Total power, frequency for unpipelined \texttt{mac} (MET).}
         \label{fig:mac-power}
@@ -236,7 +236,7 @@ The design area of the pipelined mac\_pipe is the estimated cell area from the s
 
 \begin{figure}[!htbp]
     \plotandtable{%
-        \includegraphics[width=\linewidth]{mac_mac_pipe_freq_MHz_area_um2_MET}
+        \includegraphics[width=\linewidth]{mac_mac_pipe_freq_MHz_area_um2_MET.pdf}
     }{%
         \caption{Area between \texttt{mac} and \texttt{mac\_pipe} (MET).}
         \label{fig:pipe-area}
@@ -281,7 +281,7 @@ The Total Power is defined the same way as the unpipelined design. Previously, d
 
 \begin{figure}[!htbp]
     \plotandtable{%
-        \includegraphics[width=\linewidth]{mac_mac_pipe_freq_MHz_total_uw_MET}
+        \includegraphics[width=\linewidth]{mac_mac_pipe_freq_MHz_total_uw_MET.pdf}
     }{%
         \caption{Power between \texttt{mac} and \texttt{mac\_pipe} (MET).}
         \label{fig:pipe-power}
@@ -318,7 +318,7 @@ The Total Power is defined the same way as the unpipelined design. Previously, d
 
 Cell Leakage Power continues to be almost negligible compared with dynamic power, as in the unpipelined design. The slight increase in leakage power for the pipelined design is attributed to the additional pipeline registers increasing the cell area over which leakage can occur. Thus the leakage power could be a more significant fraction in larger designs, especially at lower frequencies. Otherwise, leakage stays approximately constant at low frequency as seen in unpipelined design with the same parameters. The slight increase in power at higher frequency can be attributed to the increased design area from synthesis.
 
-The power difference is minimal at lower frequency and the grows consistenly, at a larger rate than the unpipelined design. This can be a consequence of the larger pipelined area providing more cells that will be switched each cycle. The rate of power growth becomes more distinct at higher frequency. For example, $\Delta$Power remains on the order of tens of microwatts through 500~MHz and then continues to peak, reaching about 183~$\mu W$ at 769.23~MHz. At this rate, the pipelined design may significantly exceed the power budget compared to the unpipelined design.
+The power difference is minimal at lower frequency, but growing at a larger rate than the unpipelined design. This can be a consequence of the larger pipelined area providing more cells that will be switched each cycle. The rate of power growth becomes more distinct at higher frequency. For example, $\Delta$Power remains on the order of tens of microwatts through 500~MHz and then continues to peak, reaching about 183~$\mu W$ at 769.23~MHz. At this rate, the pipelined design may significantly exceed the power budget compared to the unpipelined design at increasing frequency.
 
 % Make two graphs. On both, show 
 % clock frequency on the x­axis; then show area as the y­axis on one graph and power as the y­axis on 
@@ -330,7 +330,10 @@ The power difference is minimal at lower frequency and the grows consistenly, at
 
 \subsection{Critical Paths}
 
-The start and end points of the critical path for \texttt{mac\_pipe} are reported in Table~\ref{tab:pipe-frequency-area-slack-path}. Because the multiply-add operation is split across two registers, the critical path may lie in either the multiplier stage (\texttt{reg1}) or the accumulator stage (\texttt{reg2}).
+The start and end points of the critical path for \texttt{mac\_pipe} are reported in Table~\ref{tab:pipe-frequency-area-slack-path}. 
+
+
+Because the multiply-add operation is split across two registers, the critical path may lie in either the multiplier stage (\texttt{reg1}) or the accumulator stage (\texttt{reg2}).
 
 \begin{table}[H]
     \centering
