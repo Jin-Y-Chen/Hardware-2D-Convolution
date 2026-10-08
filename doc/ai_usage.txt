@@ -108,7 +108,7 @@ Date: 9/27,
 
     R: Did not pipeline the input_valid through the first register
 
-Date: 10/2/27
+Date: 10/2,
     ---------------------------------------------------
     Q: Based on the power report, is the sum of the dynamic and static power the power used per cycle for 1 set of inputs
 
@@ -129,3 +129,18 @@ Date: 10/2/27
 
     R: Yes
 
+Date: 10/5,
+    ---------------------------------------------------
+    Q: *Make edits and wording to the draft of the report, while keeping the content the same
+
+    R: *The edits were read with small adjustment in wording, strucuture, and correction
+
+    Q: what does slack (violated: increase significant digits) even with slack time being 0.0
+
+    R: Is still considered a violation, the actual slack value is slightly negative but rounded to zero due to limited number of signifcant digits.
+
+Date: 10/6, 
+    ---------------------------------------------------
+    Q: *Make edits and wording to the draft of the report, while keeping the content the same
+
+    R: *The edits were read with small adjustment in wording, strucuture, and correction

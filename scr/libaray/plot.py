@@ -4,7 +4,7 @@
 pplot <file> <x-axis> <y-axis> [MET]
 pplot [mac, mac_pipe] freq_MHz area_um2 MET
 MET keeps only rows whose timing is MET.
-One file writes data/part1/<file>_<x>_<y>.svg.
+One file writes data/part1/<file>_<x>_<y>.pdf.
 Several files share one graph.
 """
 
@@ -12,6 +12,9 @@ import csv
 import math
 import sys
 from pathlib import Path
+
+from reportlab.lib.colors import HexColor, black, white
+from reportlab.pdfgen import canvas
 
 ROOT = Path(__file__).resolve().parents[2]
 PART = ROOT / "data" / "part1"
@@ -90,25 +93,28 @@ def tick_label(value):
     return str(int(rounded)) if abs(value - rounded) < 1e-6 else f"{value:.6g}"
 
 
-def esc(text):
-    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-
 # mhz would read as millihertz. The column and the axis use MHz.
+# Units are ASCII letters: uW, um2, ns. No µ.
 AXIS = {"freq_mhz": "freq_MHz", "freq_Mhz": "freq_MHz", "freq_mHz": "freq_MHz"}
 LABEL = {
+    "period_ns": "Period (ns)",
     "freq_MHz": "Frequency (MHz)",
-    "total_uw": "Total power (uW)",
     "area_um2": "Area (um2)",
+    "dyn_uw": "Dynamic power (uW)",
+    "leak_uw": "Leakage power (uW)",
+    "total_uw": "Total power (uW)",
+    "slack_ns": "Slack (ns)",
 }
 COLORS = ("#1f4e79", "#c45911", "#548235", "#7030a0")
 USAGE = "pplot <file> <x-axis> <y-axis> [MET]\npplot [mac, mac_pipe] freq_MHz area_um2 MET"
 
 
-def mark(shape, x, y, color):
+def mark(pdf, shape, x, y, color, page_h):
+    pdf.setFillColor(HexColor(color))
     if shape == "square":
-        return f'<rect x="{x - 3.5:.2f}" y="{y - 3.5:.2f}" width="7" height="7" fill="{color}"/>'
-    return f'<circle cx="{x:.2f}" cy="{y:.2f}" r="4" fill="{color}"/>'
+        pdf.rect(x - 3.5, page_h - (y + 3.5), 7, 7, stroke=0, fill=1)
+    else:
+        pdf.circle(x, page_h - y, 4, stroke=0, fill=1)
 
 
 def draw(series, x_key, y_key, timing):
@@ -117,6 +123,7 @@ def draw(series, x_key, y_key, timing):
     x0, x1, x_ticks = scale(xs)
     y0, y1, y_ticks = scale(ys)
     legend_h = 16 * len(series) if len(series) > 1 else 0
+    page_h = PANEL_H + legend_h
     left, top = PAD_L, PAD_T + legend_h
     width = PANEL_W - PAD_L - PAD_R
     height = PANEL_H - PAD_T - PAD_B
@@ -127,42 +134,56 @@ def draw(series, x_key, y_key, timing):
     def sy(y):
         return top + (y1 - y) / (y1 - y0) * height
 
-    lines = [
-        f'<rect x="{left}" y="{top}" width="{width}" height="{height}" fill="white" stroke="#222"/>',
-    ]
+    names = "_".join(name for name, _ in series)
+    suffix = f"_{timing}" if timing else ""
+    out = PART / f"{names}_{x_key}_{y_key}{suffix}.pdf"
+    pdf = canvas.Canvas(str(out), pagesize=(PANEL_W, page_h))
+
+    pdf.setStrokeColor(HexColor("#222222"))
+    pdf.setFillColor(white)
+    pdf.rect(left, page_h - (top + height), width, height, stroke=1, fill=1)
+
+    pdf.setFont("Helvetica", 11)
     for value in x_ticks:
         px = sx(value)
         if abs(value - x0) > 1e-6 and abs(value - x1) > 1e-6:
-            lines.append(f'<line x1="{px:.2f}" y1="{top}" x2="{px:.2f}" y2="{top + height}" stroke="#ccc"/>')
-        lines.append(f'<line x1="{px:.2f}" y1="{top + height}" x2="{px:.2f}" y2="{top + height + 4}" stroke="#222"/>')
-        lines.append(f'<text x="{px:.2f}" y="{top + height + 18}" text-anchor="middle" font-size="11">{tick_label(value)}</text>')
+            pdf.setStrokeColor(HexColor("#cccccc"))
+            pdf.line(px, page_h - top, px, page_h - (top + height))
+        pdf.setStrokeColor(HexColor("#222222"))
+        pdf.line(px, page_h - (top + height), px, page_h - (top + height + 4))
+        pdf.setFillColor(black)
+        pdf.drawCentredString(px, page_h - (top + height + 18), tick_label(value))
     for value in y_ticks:
         py = sy(value)
         if abs(value - y0) > 1e-6 and abs(value - y1) > 1e-6:
-            lines.append(f'<line x1="{left}" y1="{py:.2f}" x2="{left + width}" y2="{py:.2f}" stroke="#ccc"/>')
-        lines.append(f'<line x1="{left - 4}" y1="{py:.2f}" x2="{left}" y2="{py:.2f}" stroke="#222"/>')
-        lines.append(f'<text x="{left - 8}" y="{py + 4:.2f}" text-anchor="end" font-size="11">{tick_label(value)}</text>')
-    lines.append(f'<text x="{left + width / 2}" y="{PANEL_H + legend_h - 8}" text-anchor="middle" font-size="12">{esc(LABEL.get(x_key, x_key.replace("_", " ")))}</text>')
-    lines.append(
-        f'<text transform="translate(16 {top + height / 2}) rotate(-90)" text-anchor="middle" font-size="12">{esc(LABEL.get(y_key, y_key.replace("_", " ")))}</text>'
-    )
+            pdf.setStrokeColor(HexColor("#cccccc"))
+            pdf.line(left, page_h - py, left + width, page_h - py)
+        pdf.setStrokeColor(HexColor("#222222"))
+        pdf.line(left - 4, page_h - py, left, page_h - py)
+        pdf.setFillColor(black)
+        pdf.drawRightString(left - 8, page_h - (py + 4), tick_label(value))
+
+    pdf.setFillColor(black)
+    pdf.setFont("Helvetica", 12)
+    pdf.drawCentredString(left + width / 2, page_h - (PANEL_H + legend_h - 8), LABEL.get(x_key, x_key.replace("_", " ")))
+    pdf.saveState()
+    pdf.translate(16, page_h - (top + height / 2))
+    pdf.rotate(90)
+    pdf.drawCentredString(0, 0, LABEL.get(y_key, y_key.replace("_", " ")))
+    pdf.restoreState()
+
     for index, (name, points) in enumerate(series):
         color = COLORS[index % len(COLORS)]
         shape = "square" if index else "circle"
         for x, y in points:
-            lines.append(mark(shape, sx(x), sy(y), color))
+            mark(pdf, shape, sx(x), sy(y), color, page_h)
         if len(series) > 1:
             ly = PAD_T + 4 + index * 16
-            lines.append(mark(shape, left + 6, ly - 4, color))
-            lines.append(f'<text x="{left + 16}" y="{ly}" font-size="12">{esc(name.replace("_", "-"))}</text>')
-    names = "_".join(name for name, _ in series)
-    suffix = f"_{timing}" if timing else ""
-    out = PART / f"{names}_{x_key}_{y_key}{suffix}.svg"
-    svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{PANEL_W}" height="{PANEL_H + legend_h}" '
-        f'font-family="sans-serif">\n' + "\n".join(lines) + "\n</svg>\n"
-    )
-    out.write_text(svg, encoding="utf-8")
+            mark(pdf, shape, left + 6, ly - 4, color, page_h)
+            pdf.setFillColor(black)
+            pdf.setFont("Helvetica", 12)
+            pdf.drawString(left + 16, page_h - ly, name.replace("_", "-"))
+    pdf.save()
     return out
 
 
