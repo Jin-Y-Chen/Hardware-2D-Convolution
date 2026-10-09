@@ -330,7 +330,7 @@ The power difference is minimal at lower frequency, but growing at a larger rate
 
 \subsection{Critical Paths}
 
-The start and end points of the critical path for \texttt{mac\_pipe} are reported in Table~\ref{tab:pipe-frequency-area-slack-path}. Because the multiply-add operation is split across two registers, the critical path may lie in either the multiplier stage (\texttt{reg1}) or the accumulator stage (\texttt{reg2}).
+The start and end points of the critical path for \texttt{mac\_pipe} are reported in Table~\ref{tab:pipe-frequency-area-slack-path}. Because the multiply-add operation is split across two registers, the critical path may lie in either the multiplier stage \texttt{reg1} or the accumulator stage \texttt{reg2}.
 
 \begin{table}[H]
     \centering
@@ -371,39 +371,87 @@ The start and end points of the critical path for \texttt{mac\_pipe} are reporte
         666.67  & 2732.35 & 1636.92 & 0.00   & \texttt{input0[5]}  & \texttt{reg1/out\_product\_reg[29]} & MET \\
         714.29  & 2724.64 & 1741.75 & 0.00   & \texttt{input0[3]}  & \texttt{reg1/out\_product\_reg[30]} & MET \\
         769.23  & 2773.58 & 1928.30 & 0.00   & \texttt{reg2/out\_accum\_reg[7]}  & \texttt{reg2/out\_accum\_reg[47]} & MET \\
-        833.33  & 2823.86 & 2116.52 & 0.00   & \texttt{input0[11]} & \texttt{reg1/out\_product\_reg[23]} & VIOLATED* \\
+        833.33  & 2823.86 & 2116.52 & 0.00   & \texttt{input0[11]} & \texttt{reg1/out\_product\_reg[23]} & VIOLATED\footnotemark \\
         909.09  & 2860.56 & 2372.62 & $-0.06$ & \texttt{input0[13]} & \texttt{reg1/out\_product\_reg[27]} & VIOLATED \\
         1000    & 2832.37 & 2581.64 & $-0.18$ & \texttt{input0[9]}  & \texttt{reg1/out\_product\_reg[20]} & VIOLATED \\
         \bottomrule
     \end{tabular}}
     \caption{Frequency, area, power, timing slack, and critical path for pipelined \texttt{mac\_pipe}.}
-    \label{tab:pipe-frequency-area-slack-path}
+    \label{tab:pipe-frequency-area-slack-path} 
 \end{table}
+\footnotetext{The 833.33~MHz point has a displayed slack of zero but considered as VIOLATED because of negative slack being rounded to zero.}
 
-The additional pipeline register splits the multiply-add operation into two stages, so the critical path may lie in either the multiplier stage or the accumulator stage. At low frequencies and up to approximately 200~MHz, the critical path is consistently from bit~[0] to bit~[47] of \texttt{out\_accum\_reg} in \texttt{reg2}. This is the 48-bit adder in the second pipeline stage: the carry chain from the least-significant bit of the accumulator to the most-significant bit. At 250~MHz the start point shifts to bit~[0] of \texttt{out\_product\_reg} in \texttt{reg1}, while the endpoint remains bit~[47] of \texttt{out\_accum\_reg} in \texttt{reg2}. The path is still in the accumulate stage, now starting from the registered product rather than an accumulator bit. From 333.33~MHz through 526.32~MHz the path remains in the accumulate stage, with some variation in the start and end indices of \texttt{out\_accum\_reg}.
+The additional pipeline register splits the multiply-add operation into two stages, so the critical path may lie in either the multiplier stage or the accumulator stage. At low frequencies and up to around 200~MHz, the critical path is consistently from index~[0] to index~[47] of \texttt{out\_accum\_reg} in \texttt{reg2}. This is likely the path of 48-bit adder carry chain from the least-significant bit of the accumulator to the most-significant bit. At 250~MHz, the cirtical path indictate the carry chain start from the input of the product rather than the accumulator. From 333.33~MHz through 526.32~MHz the path remains in the accumulate stage, with some variation in the start and end indices of \texttt{out\_accum\_reg}. This suggests the carry chain is the main bottleneck at lower frequencies. 
 
-Between 555.56~MHz and 714.29~MHz the critical path moves to the multiplier stage, starting from an \texttt{input0} bit and ending at \texttt{reg1/out\_product\_reg}. At 769.23~MHz, the last frequency that meets timing, the path returns to the accumulate stage. Timing violations from 833.33~MHz onward are again on the multiplier path, from \texttt{input0} to \texttt{reg1/out\_product\_reg}. The 833.33~MHz point has a displayed slack of zero but is reported as VIOLATED, which is the same rounded-slack case described for the unpipelined design.
-
-This behavior follows from how the design is pipelined. The combinational multiply \texttt{input0 * input1} is captured in \texttt{reg1}, and the combinational add \texttt{out\_product + post\_accum} is captured in \texttt{reg2}. At relaxed periods the longest delay is the accumulator adder, so the tool reports a path through \texttt{reg2}. As the period shrinks, the 16$\times$16 multiplier delay becomes comparable to, and then larger than, the adder delay, so the critical path shifts into \texttt{reg1}. The brief return to the accumulate stage at 769.23~MHz indicates that the two stages are similarly tight near the timing limit. That the first violations occur on the multiplier path suggests that the product stage, rather than the 48-bit adder, is what ultimately limits the maximum frequency of \texttt{mac\_pipe}.
+Between 555.56~MHz and 714.29~MHz the critical path moves to the multiplier stage, starting from an \texttt{input0} index and ending at \texttt{reg1/out\_product\_reg}. This indicates the 16$\times$16 multiplier is now the critical path at these frequencies. At 769.23~MHz, the highest frequency that meets timing, the path returns to the accumulate stage. Timing violations from 833.33~MHz onward are again on the multiplier path, from \texttt{input0} to \texttt{reg1/out\_product\_reg}. This suggests the multiplier stage is the bottleneck preventing the design from achieving higher frequency.
 
 %Q3
 \section{Performance Comparison}
-% Did pipelining help make this module faster? Explain why 
-% or why not and show how this is reflected in the synthesis data and critical path
+
+Both the pipelined and unpipelined design MET the timing constraint at a maximum frequency of 769.23 MHz, corresponding to a period of 1.30 ns. However, the slack violation due to negative rounding indicates that the pipelined design was close to meeting the timing constraint at a period of 1.20 ns. A greater resolution of the clock period may capture a faster pipelined design. 
+
+\begin{table}[H]
+    \centering
+    \scriptsize
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{lrrrrrlll}
+        \toprule
+        \textbf{Design} &
+        \textbf{Period (ns)} &
+        \textbf{Freq.\ (MHz)} &
+        \textbf{Area ($\mu m^2$)} &
+        \textbf{Power ($\mu W$)} &
+        \textbf{Slack (ns)} &
+        \textbf{Path Start} &
+        \textbf{Path End} &
+        \textbf{Timing} \\
+        \midrule
+        \texttt{mac}       & 1.29 & 775.19 & 2388.68 & 1752.89 & $-0.06$ & \texttt{input0[7]}  & \texttt{acc\_reg[36]} & VIOLATED \\
+        \texttt{mac}       & 1.28 & 781.25 & 2401.98 & 1785.59 & $-0.05$ & \texttt{input0[3]}  & \texttt{acc\_reg[26]} & VIOLATED \\
+        \texttt{mac}       & 1.27 & 787.40 & 2415.01 & 1802.77 & $-0.04$ & \texttt{input0[6]}  & \texttt{acc\_reg[38]} & VIOLATED \\
+        \texttt{mac}       & 1.26 & 793.65 & 2462.89 & 1893.45 & $-0.04$ & \texttt{input0[9]}  & \texttt{acc\_reg[39]} & VIOLATED \\
+        \texttt{mac}       & 1.25 & 800.00 & 2445.34 & 1855.99 & $-0.05$ & \texttt{input0[8]}  & \texttt{acc\_reg[43]} & VIOLATED \\
+        \texttt{mac}       & 1.24 & 806.45 & 2485.50 & 1892.75 & $-0.05$ & \texttt{input0[5]}  & \texttt{acc\_reg[41]} & VIOLATED \\
+        \texttt{mac}       & 1.23 & 813.01 & 2469.28 & 1908.01 & $-0.06$ & \texttt{input0[13]} & \texttt{acc\_reg[42]} & VIOLATED \\
+        \texttt{mac}       & 1.22 & 819.67 & 2433.63 & 1872.99 & $-0.07$ & \texttt{input0[1]}  & \texttt{acc\_reg[42]} & VIOLATED \\
+        \texttt{mac}       & 1.21 & 826.45 & 2441.61 & 1933.98 & $-0.04$ & \texttt{input0[6]}  & \texttt{acc\_reg[23]} & VIOLATED \\
+        \midrule
+        \texttt{mac\_pipe} & 1.21 & 826.45 & 2810.29 & 2122.06 & 0.00    & \texttt{input0[8]}  & \texttt{reg1/out\_product\_reg[25]} & MET \\
+        \bottomrule
+    \end{tabular}}
+    \caption{Fine-period area, power, slack, and timing for maximum frequency.}
+    \label{tab:max-freq}
+\end{table}
+
+As shown in Table~\ref{tab:max-freq}, the pipelined design is able to meet a stricter timing constraint with a clock period of 1.21~ns. Where the unpipelined design is VIOLATED at 1.21~ns, the pipelined design MET the timing constraints to run at a faster frequency of 826.45~MHz. Therefore the additional pipeline register provide a modest 60MHz improvement in frequency compared to the unpipelined design. The critical path is still from \texttt{input0} to \texttt{reg1/out\_product\_reg} at 826.45~MHz, indicating the multiplier stage is still the bottleneck of the pipelined design. Achievement in higher frequency may be possible with deeper pipelining of the multiplier stage.
+
+For now, we will use the pipelined design at a clock period of 1.21~ns or 826.45~MHz as the maximum clock frequency for the following analysis.
 
 %Q4
 \subsection{Maximum-Frequency Energy}
 
-%  pipelined design with the maximum clock frequency you found, how much energy would your 
-% system consume if it were to process a sequence of 50 sets of input values? 
+Energy is the integral of power over time. Synthesis reports average power,
+\[
+P_\mathrm{avg} = \frac{1}{T}\int_0^{T} P(t)\,dt,
+\]
+in Watts as Joules per second. Using the maximum frequency case from Table~\ref{tab:max-freq}, $P_\mathrm{avg}$ is the total power of the \texttt{mac\_pipe} design. The time is the clock period used that MET the timing constraint for \texttt{mac\_pipe}, where the clock period is $t = 1.21$~ns for the maximum frequency case. Therefore, the energy of a single clock cycle is 
 
-% assume you have to wait 
-% until the final output comes out of the system, and don’t forget that your pipelined design takes more 
-% than 50 cycles to compute 50 sets of inputs.
+\[
+E_\mathrm{cycle} = P_\mathrm{avg}\,t.
+\]
 
-% Remember: energy is measured in joules. Power = energy per time. 1 Watt = 1 Joule per second. Use 
-% the power obtained from synthesis and your understanding of the time it would take for your system 
-% to fully compute 50 sets of input values
+
+Suppose we want to compute 50 sets of input values. The 2-stage \texttt{mac\_pipe} design will take one additional cycle to fill the pipeline with inputs before the outputs could be computed every cycle. Then the total time to compute 50 sets will require 51 cycles. Thus, the energy consumed for 50 sets of input is
+
+\begin{align*}
+E = 51 (E_\mathrm{cycle}) &= 51 (P_\mathrm{avg}\,t) \\
+&= 51 (2.122 \times 10^{-3}~\mathrm{W} \times 1.21 \times 10^{-9}~\mathrm{s}) \\
+&= 1.31 \times 10^{-10}~\mathrm{J}.
+\end{align*}
+
+This is equivalent to about 131 pico-Joules of energy consumed to compute 50 sets of input values.
+
+
 
 %Q5
 \subsection{Frequency-Dependent Energy}

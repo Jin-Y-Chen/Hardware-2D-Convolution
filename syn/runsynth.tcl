@@ -10,7 +10,7 @@ set SRC_FILE [list "../rtl/param.sv" "../rtl/part1/mac_pipe.sv"];
 # IO_DELAY stays in this file.
 set CLK_NAME   "clk";
 set RST_NAME   "reset";
-set CLK_PERIOD 1.3;
+set CLK_PERIOD 1.21;
 set IO_DELAY   0.08;
 
 # setup

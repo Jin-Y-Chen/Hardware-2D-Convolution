@@ -1,0 +1,51 @@
+\section{Performance Comparison}
+
+
+
+
+
+
+
+Pipelining does make the module faster, but only 
+modestly. Table~\ref{tab:max-freq} compares both 
+designs at the same 1.21~ns (826.45~MHz) target.
+ \texttt{mac\_pipe} meets timing with a displayed 
+ slack of 0.00~ns, while \texttt{mac} is VIOLATED 
+ with $-0.04$~ns of slack. The unpipelined design 
+ therefore cannot run at this frequency; the pipelined design can.
+
+That result follows from the critical paths. 
+At 1.21~ns, \texttt{mac} is still limited by a
+ path from \texttt{input0} to \texttt{acc\_reg},
+  so the multiply and the 48-bit add remain in 
+  one clock period. \texttt{mac\_pipe} reports a
+   path from \texttt{input0} to \texttt{reg1/out\_product\_reg}:
+    only the multiplier stage has to fit in the period. 
+    Splitting off the adder is enough for the extra 0.04~ns,
+     which is why the same target is MET for \texttt{mac\_pipe}
+      and VIOLATED for \texttt{mac}.
+
+
+
+\subsection{Maximum-Frequency Energy}
+
+Energy is power times the time the system must 
+stay on: $E = P_\mathrm{av}\,T(50)$. Slack at 
+1.21~ns is MET (0.00~ns), so one cycle is the 
+clock period that was used, $t = 1.21$~ns. The
+ timing report also shows a data arrival time of 
+ 1.17~ns and a data required time of 1.17~ns: the
+  1.21~ns edge minus a 0.04~ns library setup. 
+  Arrival equals required, which is why slack is 
+  zero, but the chip is still clocked every 1.21~ns. 
+  Wall-clock time therefore uses $t = 1.21$~ns, not 
+  the 1.17~ns required time.
+
+\texttt{mac\_pipe} has two pipeline registers, so the last of 50 inputs needs two extra cycles to reach the accumulator output. The number of cycles is $50 + i$ with $i = 2$:
+\[
+T(50) = (50 + 2)\,t = 52 \times 1.21~\mathrm{ns} = 62.92~\mathrm{ns}.
+\]
+Synthesis total power at this point is $P_\mathrm{av} = 2.122~\mathrm{mW}$ (2058.7~$\mu W$ dynamic plus 63.36~$\mu W$ leakage). Then
+\[
+E = (2.122 \times 10^{-3}~\mathrm{W})\,(62.92 \times 10^{-9}~\mathrm{s}) = 1.335 \times 10^{-10}~\mathrm{J}.
+\]

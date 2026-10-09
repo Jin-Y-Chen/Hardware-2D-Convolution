@@ -144,3 +144,14 @@ Date: 10/6,
     Q: *Make edits and wording to the draft of the report, while keeping the content the same
 
     R: *The edits were read with small adjustment in wording, strucuture, and correction
+
+Date: 10/8,
+    ---------------------------------------------------
+    Q: why is the critical path consistently from bit [0] to bit [47] of out\accum\reg in reg2
+
+    R: In an adder, a change on the LSB can affect every higher sum bit. The MSB waits the longest, so STA reports [0] → [47].
+
+    ---------------------------------------------------
+    Q: what is the unit for the data arrived time and is that the required time of a single clock cycle 
+
+    R: Not the clock period, the required time is the usable window inside a clock cycle after delay. 
