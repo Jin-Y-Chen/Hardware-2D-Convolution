@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# link — push rtl/ tb/ sim/ syn/; pull new names; overwrite log/ from CAD.
+# constraint/ stays LOCAL only. vlog/vsim/vsyn read all_config.json here.
+
+set -euo pipefail
+# shellcheck source=libaray/cad_common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/libaray/cad_common.sh"
+
+# Extra rsync excludes per tree. Paths are relative to that folder.
+# Tool junk (work/, *.svf, command.log, …) is already dropped in cad_common.sh.
+declare -A TREE_EXTRAS
+TREE_EXTRAS[rtl]="--exclude /command.log --exclude /default.svf --exclude *.svf"
+TREE_EXTRAS[tb]="--exclude /README.md --exclude /part1/params.sv --exclude /part1/simParams1 --exclude /part1/genParams1 --exclude /part1/wave.do"
+TREE_EXTRAS[sim]="--exclude /part1/params.sv --exclude /part1/param.sv"   # old genParams1 output
+TREE_EXTRAS[syn]="--exclude /params.sv --exclude /command.log --exclude /default.svf --exclude *.svf"
+TREE_EXTRAS[log]="--exclude /README.md"
+
+# rsync --out-format='%n' → one path per line (skip dir-only "./")
+link_summary() {
+    local out="$1" empty="$2"
+    local names
+    names=$(printf '%s\n' "$out" | grep -E '[^/]$' | grep -v '^[.]/*$' | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+    if [[ -n "$names" ]]; then
+        echo "$names"
+    else
+        echo "$empty"
+    fi
+}
+
+# mode: push | pull (new names only) | pull-update (overwrite local copies).
+link_tree() {
+    local name="$1" mode="$2" empty="$3"
+    local local_dir="$PROJECT_ROOT/$name"
+    local remote="$REMOTE_USER@$REMOTE_HOST:~/$REMOTE_PROJECT_REL/$name/"
+    # shellcheck disable=SC2206
+    local extras=( ${TREE_EXTRAS[$name]} )
+    local out
+
+    mkdir -p "$local_dir"
+    if [[ "$mode" == push ]]; then
+        out=$(rsync_project_ssh "$name" "${extras[@]}" "$local_dir/" "$remote")
+    elif [[ "$mode" == pull-update ]]; then
+        out=$(rsync_project_ssh "$name" "${extras[@]}" "$remote" "$local_dir/" || true)
+    else
+        out=$(rsync_project_ssh "$name" "${extras[@]}" --ignore-existing "$remote" "$local_dir/" || true)
+    fi
+    printf '    %-4s  %s\n' "$name/" "$(link_summary "$out" "$empty")"
+}
+
+# Regenerate rtl/param.sv before the push.
+apply_config
+
+echo "link  LOCAL  <->  $REMOTE_NAME  (~/$REMOTE_PROJECT_REL)"
+echo
+echo "  LOCAL -> CAD"
+link_tree rtl push        "up to date"
+link_tree tb  push        "up to date"
+link_tree sim push        "up to date"
+link_tree syn push        "up to date"
+# Drop leftover params.sv copies so pull cannot restore them.
+remote_tidy
+echo
+echo "  CAD -> LOCAL   (new names only; LOCAL files kept)"
+link_tree rtl pull        "no new files"
+link_tree tb  pull        "no new files"
+link_tree sim pull        "no new files"
+link_tree syn pull        "no new files"
+echo
+echo "  CAD -> LOCAL   (log: overwrite local transcripts)"
+link_tree log pull-update "up to date"

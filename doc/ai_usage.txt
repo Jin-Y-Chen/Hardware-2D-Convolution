@@ -1,0 +1,204 @@
+AI Usage Log
+
+Scripts for Automation is written by AI
+Testbench is also enchanced with AI, display signal name so tha GUI is not necesesary 
+
+Date: 9/20, once upon good evening
+    --------------------------------------------------
+    Q: what does WIDTH mean in the context of a TUSER parameter? 
+
+    [GPT-5.6 Luna] 
+    R: "number of bits used to represent each individual numerical value"
+
+    --------------------------------------------------
+    Q: what's a recommend project folder structure with emphasizes on automation with script?
+        *ASK for folder name, convention, and structure
+
+    [Cursor Grok-4.6] 
+    R: *Large graphical structure, A seperate folder for testbench, each step of the design process(sim, syn), input, and output folder
+
+Date: 9/24, 
+    --------------------------------------------------
+    Q: how to sign extend in verilog?
+
+    R: if both sides are signed. A <= B automatic sign-extends. No build in unextend, usedsplicing
+
+    ---------------------------------------------------
+    Q: how to add package in verilog
+
+    R: // rtl/conv_pkg.sv
+    package conv_pkg;
+        parameter int WIDTH = 16;
+        parameter int ACCW  = 48;
+
+        typedef logic signed [WIDTH-1:0] data_t;
+        typedef logic signed [ACCW-1:0]  acc_t;
+    endpackage
+
+    import conv_pkg::*;          // whole package
+
+    module mac (
+        input  data_t input0,
+        ...
+    );
+        acc_t acc;
+    endmodule
+
+    ---------------------------------------------------
+    Q: what is the differences between localparam and param module header?
+
+    R: parameter is input to the module, localparam can not be override
+
+    ---------------------------------------------------
+    Q: Warning Incorrect size constant for integer literal
+
+    R: use reg signed [ACCW-1:0] acc = 0; instead of reg signed [ACCW-1:0] acc = 0'b0;
+
+    ---------------------------------------------------
+    Q: Error (suppressible): Variable 'quant' is implicitly static. You must either explicitly declare it as static or automatic
+    
+    R: quant is declared and initalized inside always_comb. lifetime is not specified, so the tool refuses the implicit default. Declare it in the main body or don't initalize
+
+Date: 9/25,
+    ---------------------------------------------------
+    Q: Error: near "if": syntax error, unexpected if, expecting IDENTIFIER or TYPE_IDENTIFIER or NETTYPE_IDENTIFIER.
+
+    R: Missing semicolon on the pervious line *yikes
+
+    ---------------------------------------------------
+    Q: what is ouput_exp_d in mac_tb.sv
+
+    R: out_exp_d is the delayed expected output: last cycle’s C-model result, held for one cycle and compared to the DUT’s out
+
+Date: 9/26, 
+    ---------------------------------------------------
+    Q: *linking my simulation script, ssh_vsim, make sure to push correct parameter to remote and pull simulation log to host
+
+    R: *written and modify ssh_vsim to reference simParams1, which was encahned to display all signal
+
+Date: 9/27, 
+    ---------------------------------------------------
+    Q: *Asking for specific edge cases: how to assign out = 0 initally without causing double assignment
+
+    R: Q_reg is uninitialized, shifting cause Unknown
+
+    ---------------------------------------------------
+    Q: *Asking for specific edge cases: the MAC output without saturation is wrong for init_acc = 1
+
+    R: init_acc does not load Q_reg, Q_reg stay at the value from the last input_valid
+
+    ---------------------------------------------------
+    Q: *Asking for specific edge cases: the MAC output is not shifting correctly
+
+    R: if both input_valid and init_acc is assert the Q_reg is loaded with Q
+
+    ---------------------------------------------------
+    Q: *Have the accumaulator and Q_reg in the same register, if statement is bit janky
+
+    R: Split accumaulator and Q into two seperate register, similatr to the layout
+
+Date: 9/27,
+    ---------------------------------------------------
+    Q: Synatx error regarding "(" in module instantiation
+
+    R: Shows the correct syntax for module instatntiation
+
+    ---------------------------------------------------
+    Q: *Asking for specific edge cases: the MAC_pipeline output should still update even without all {0,0,0} control signal
+
+    R: Did not pipeline the input_valid through the first register
+
+Date: 10/2,
+    ---------------------------------------------------
+    Q: Based on the power report, is the sum of the dynamic and static power the power used per cycle for 1 set of inputs
+
+    R: Dynamic plus leakage is average power (energy per second), not energy per cycle an not energy for one input
+    
+    ---------------------------------------------------
+    Q: Based on the timing report is the slack time the time for 1 set of input? 
+
+    R: Slack is leftover (or missing) time in the clock period of the slowest path after the clock edge.
+    
+    ---------------------------------------------------
+    Q: Then in the case of slack met(0), the time to complete 1 cycle of an input is the clock period that I used
+
+    R: Yes. If slack is MET (critical path used the whole period), the chip can run at the clock you set. One cycle is that period.
+    
+    ---------------------------------------------------
+    Q: Then to calculate the energy required, E = P_av(T(50)), where T(50) = (50 + i)t such that t is the period for slack = MET and i is adjusted/different value of the acutal cycle amount
+
+    R: Yes
+
+Date: 10/5,
+    ---------------------------------------------------
+    Q: *Make edits and wording to the draft of the report, while keeping the content the same
+
+    R: *The edits were read with small adjustment in wording, strucuture, and correction
+
+    Q: what does slack (violated: increase significant digits) even with slack time being 0.0
+
+    R: Is still considered a violation, the actual slack value is slightly negative but rounded to zero due to limited number of signifcant digits.
+
+Date: 10/6, 
+    ---------------------------------------------------
+    Q: *Make edits and wording to the draft of the report, while keeping the content the same
+
+    R: *The edits were read with small adjustment in wording, strucuture, and correction
+
+Date: 10/8,
+    ---------------------------------------------------
+    Q: why is the critical path consistently from bit [0] to bit [47] of out\accum\reg in reg2
+
+    R: In an adder, a change on the LSB can affect every higher sum bit. The MSB waits the longest, so STA reports [0] → [47].
+
+    ---------------------------------------------------
+    Q: what is the unit for the data arrived time and is that the required time of a single clock cycle 
+
+    R: Not the clock period, the required time is the usable window inside a clock cycle after delay. 
+
+Date: 10/9
+    ---------------------------------------------------
+    Q: Check the fromulation for the energy per cycle equation 
+
+    R: Yes 
+    ---------------------------------------------------
+    Q: Then we can calculate the energy of the design for all frequency value, where we will expect the a similar trend in the power vs frequency plot
+
+    R: E can be computed at every MET frequency, but it should not follow the power plot. E = 51 P t = 51 P / f. Power rises with f; energy is flatter and higher at low f because leakage is paid for a longer time.
+
+Date: 10/10
+    ---------------------------------------------------
+    Q: Verilog global function structure and how does that differ from module instantiation
+
+    R: A function is called (y = f(x)): combinational, one return, inlined. Closest to global is a package function (import pkg::*;). A module is instantiated and wired; it always exists and can have clocks/state. Do not call a module or instantiate a function.
+
+    ---------------------------------------------------
+    Q: If you want to reference a module inside a function, where do I instantiate the module?
+
+    R: You cannot instantiate a module inside a function. Instantiate it in the parent module body (same level as always_ff). Wire its ports to signals; the function can only use those signals, not the instance.
+
+    ---------------------------------------------------
+    Q: Is this legal parameterization: memory #(.WIDTH(WIDTH), .SIZE(R * C)) X_matrix (); 
+
+    R: The #(.WIDTH(WIDTH), .SIZE(R * C)) part is legal. A parent parameter and an expression like R * C are valid overrides
+
+    ---------------------------------------------------
+    Q: in a FSM setup where we use enum, the first state value is also the default value that the design default to in the hardware?
+
+    R: First enum label is encoding 0 unless you assign a value. That is not an automatic reset. FFs do not start in idle unless you write state <= idle on reset (or initialize the declaration). Power-up 0 matching idle is coincidence.
+
+    ---------------------------------------------------
+    Q: Then do I assign state = Idle to make the starting state in the hardware.
+
+    R: Yes, on reset in always_ff: if (reset) state <= idle. Use <= and the enum name idle (case sensitive). state = idle is blocking / not the hardware reset. You already have this.
+
+    ---------------------------------------------------
+    Q: Error: near "TUSER_Q": Syntax error. Unexpected range following an IDENTIFIER.
+
+    R: Logic (capital L) is not a type. The tool treats it as a name, then [6:0] is an illegal range after that name. Use logic [6:0] TUSER_Q;
+
+Date: 10/11
+
+    Q: What is the differences between latency and throughput?
+
+    R: Latency is the time for one input to finish (L = N_cyc t). Throughput is how many results finish per second (TP = 1/t after the pipe is full). Pipe can have higher TP and worse latency.

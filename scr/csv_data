@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# pdata — append log/vsyn.log to data/part1/<top>.csv. Host only.
+
+set -euo pipefail
+SCR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec python3 "$SCR/libaray/table.py" "$@"

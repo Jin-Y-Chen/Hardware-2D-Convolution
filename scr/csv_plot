@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# pplot <file> <x-axis> <y-axis> [MET]
+# pplot [mac, mac_pipe] freq_MHz area_um2 MET
+# pplot mac_pipe freq_MHz '[total_uw * period_ns]' MET
+
+set -euo pipefail
+SCR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# WSL python3 often has no reportlab; Windows python on this machine does.
+pick_python() {
+  local py
+  for py in python3 python python.exe \
+      /mnt/c/Users/*/AppData/Local/Python/bin/python.exe \
+      /mnt/c/Users/*/AppData/Local/Programs/Python/Python*/python.exe; do
+    command -v "$py" >/dev/null 2>&1 || continue
+    if "$py" -c "import reportlab" >/dev/null 2>&1; then
+      printf '%s\n' "$py"
+      return 0
+    fi
+  done
+  return 1
+}
+
+if PY="$(pick_python)"; then
+  script="$SCR/libaray/plot.py"
+  if [[ "$PY" == *.exe ]] && command -v wslpath >/dev/null 2>&1; then
+    script="$(wslpath -w "$script")"
+  fi
+  exec "$PY" "$script" "$@"
+fi
+echo "pplot needs reportlab. On WSL: sudo apt install python3-reportlab" >&2
+exit 1
