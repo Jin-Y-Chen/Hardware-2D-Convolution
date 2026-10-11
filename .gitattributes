@@ -1,0 +1,6 @@
+# Bash/Python that WSL and CAD run must stay LF. CRLF makes `$'\r'` syntax errors.
+*.sh text eol=lf
+*.py text eol=lf
+*.tcl text eol=lf
+scr/ssh_* text eol=lf
+scr/csv_* text eol=lf
