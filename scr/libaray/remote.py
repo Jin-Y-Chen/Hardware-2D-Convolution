@@ -81,14 +81,20 @@ def op_vlog(args):
 
 
 # Run the testbench in the console (vsim -c).
+# -GPIPELINED is only for the MAC testbench.
+# STAGE and INPUT_TVALID_PROB are sim.STAGE and sim.TVALID_PROB, not rtl/param.sv.
 def op_vsim(args):
     proj = project(args.proj)
-    sys.exit(stream(
-        [questa("vsim"), "-64", "-c", "-work", str(proj / "work"), args.top,
-         "-sv_seed", args.seed, f"-GPIPELINED={args.pipelined}",
-         "-do", "run -all; quit"],
-        proj, proj / "log" / "vsim.log",
-    ))
+    cmd = [questa("vsim"), "-64", "-c", "-work", str(proj / "work"), args.top,
+           "-sv_seed", args.seed]
+    if args.pipelined is not None:
+        cmd.append("-GPIPELINED=%s" % args.pipelined)
+    if args.stage is not None:
+        cmd.append("-GSTAGE=%s" % args.stage)
+    if args.tvalid is not None:
+        cmd.append("-GINPUT_TVALID_PROB=%s" % args.tvalid)
+    cmd.extend(["-do", "run -all; quit"])
+    sys.exit(stream(cmd, proj, proj / "log" / "vsim.log"))
 
 
 # Synthesize with dc_shell -f runsynth.tcl. setupdc.tcl is always syn/setupdc.tcl.
@@ -106,7 +112,8 @@ def op_tidy(args):
     shutil.rmtree(proj / "constraint/param", ignore_errors=True)
     shutil.rmtree(proj / "constraint/config", ignore_errors=True)
     for rel in (
-        "rtl/param_pkg.sv", "tb/part1/params.sv", "sim/part1/params.sv", "syn/params.sv",
+        "rtl/param_pkg.sv", "tb/part1/params.sv", "tb/part2/params.sv",
+        "sim/part1/params.sv", "syn/params.sv",
     ):
         path = proj / rel
         if path.is_file():
@@ -133,7 +140,9 @@ def parser():
     vsim.add_argument("--proj", required=True)
     vsim.add_argument("--top", required=True)
     vsim.add_argument("--seed", required=True)
-    vsim.add_argument("--pipelined", required=True)
+    vsim.add_argument("--pipelined")
+    vsim.add_argument("--stage")
+    vsim.add_argument("--tvalid")
     vsim.set_defaults(func=op_vsim)
 
     vsyn = sub.add_parser("vsyn")

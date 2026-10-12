@@ -4,3 +4,7 @@
 *.tcl text eol=lf
 scr/ssh_* text eol=lf
 scr/csv_* text eol=lf
+sim/part1/genParams1 text eol=lf
+sim/part1/simParams1 text eol=lf
+sim/part2/genParams2 text eol=lf
+sim/part2/simParams2 text eol=lf

@@ -1,43 +1,3 @@
-
-
-
-/* 
-- control logic and memories for holding the input matrix 𝑋 and weight
-matrix 𝑊. It also contains registers to hold the values of 𝑆, 𝐵, and 𝑄.
-
-- AXI-Stream interface will be used to load 𝑋, 𝑊,
-𝐵, 𝑄, 𝑆, and new_W (the latter will be introduced below) 
-
-- inputs_loaded signal is an output that your module will use to indicate when its internal
-memories hold complete inputs (𝑋 and 𝑊 matrices and values of 𝑆, 𝐵, and 𝑄).
-
-- when input loaded is asserted, X_read_addr and X_data are used to read data from the 𝑋 
-input matrix memory, otherwise these signal are ignored
-
-- when input loaded is asserted, W_read_addr and W_data are used to read data from the 𝑊 
-weight matrix memory, otherwise these signal are ignored
-
-- 𝑆 controls how far the weight matrix “moves” across 𝑋 as you compute output values.
-𝑆 can be any value such that 1 ≤ 𝑆 ≤ MAXS, where MAXS is derived from R, C, and K.)
-
-- B is an output that holds the bias value 𝐵. 
-
-- Q is an output that holds the value of 𝑄: the number of bits the MAC unit will use to scale its accumulated
-result down before it leaves your system 
-
-- "We require the S, B, and Q output to be correct and valid anytime
-inputs_loaded is 1."
-
-- compute_finished signal is an input that is used to tell the Input Memory module when the sys-
-tem is done computing the convolution on the matrices stored in memory
-
-- When compute_finished is asserted on a positive clock edge, your module should set inputs_loaded
-to 0 and go back to its initial state to begin taking in new input values. 
-
-- The compute_finished signal should only ever be 1 when inputs_loaded is 1. (So your system can 
-safely ignore compute_finished when inputs_loaded is 0.)
-*/
-
 module memory #(
     parameter WIDTH=16, SIZE=64,
     localparam LOGSIZE=$clog2(SIZE)
@@ -158,8 +118,8 @@ module input_mems #(
 
     //internal logic to drive addr and wr_en of memory
     logic wr_X_en, wr_W_en, new_W;
-    logic [W_ADDR_BITS-1:0] W_mem_addr; 
-    logic [X_ADDR_BITS-1:0] X_mem_addr;
+    logic [W_ADDR_BITS-1:0] W_mem_addr, W_mem_addr_reg; 
+    logic [X_ADDR_BITS-1:0] X_mem_addr, X_mem_addr_reg;
 
     //internal register, non-memory component
     logic [6:0] TUSER_Q;
@@ -191,18 +151,17 @@ module input_mems #(
         if (reset) //synchronized reset, update output on rising edge of clock with asserted reset
             state <= idle;
         else
-            state <= next_state; 
-
-            if (wr_W_en) //increment the address of the W memory
-                W_mem_addr <= W_mem_addr + 1;
-            else if (wr_X_en) //increment the address of the X memory
-                X_mem_addr <= X_mem_addr + 1;
+            state <= next_state;     
+            W_mem_addr <= W_mem_addr_reg;
+            X_mem_addr <= X_mem_addr_reg;
     end 
 
     always_comb begin
         if (reset) begin
             next_state = idle;
             AXIS_TREADY = 1;
+            W_mem_addr_reg = 0;         //reset to start of memory
+            X_mem_addr_reg = 0;
         end 
         else begin
             case (state)
@@ -218,11 +177,13 @@ module input_mems #(
 
                         if (W_mem_addr == K * K) begin //This phase is complete after the entire 𝑊 matrix is loaded (𝐾2 values).
                             next_state = input_B;
-                            W_mem_addr = 0;
+                            W_mem_addr_reg = 0;
                             wr_W_en = 0;
                         end
-                        else if (AXIS_TVALID && AXIS_TREADY) //data will be stored in the W memory. 
+                        else if (AXIS_TVALID && AXIS_TREADY) begin//data will be stored in the W memory on positive clock edge
                             wr_W_en = 1;
+                            W_mem_addr_reg <= W_mem_addr_reg + 1;
+                        end
                     end 
                 end 
                 // take in the 𝐵 (bias) value via the AXI-Stream input interface.
@@ -237,36 +198,37 @@ module input_mems #(
                 end
                 // take in 𝑋 matrix data via its AXI-Stream input interface.
                 input_X : begin
-
                     if (X_mem_addr == R * C) begin //This phase is complete after the entire 𝑋 matrix is loaded(𝑅 × 𝐶 values)
-                        next_state = input_B;
-                        X_mem_addr = 0;
+                        next_state = input_loaded;
+                        X_mem_addr_reg = 0;
                         wr_X_en = 0;
                     end
-                    else if (AXIS_TVALID && AXIS_TREADY) //data will be stored in the X memory. 
+                    else if (AXIS_TVALID && AXIS_TREADY) begin //data will be stored in the X memory on positive clock edge
                         wr_X_en = 1; 
+                        X_mem_addr_reg <= X_mem_addr_reg + 1;
+                    end
                 end
                 // begins after the inputs are complete.
                 input_loaded    : begin
-                    AXIS_TREADY = 0;    //not ready to receive new inputs, so it must output AXIS_TREADY=0.
-                    inputs_loaded = 1;  //output inputs_loaded=1 during this phase.
-
-                    // allow the memory read interfaces (on the right side of Figure 1) to read data from the matrix memories.
-                    W_mem_addr = W_read_addr;
-                    X_mem_addr = X_read_addr;
-
                     /*
                     In this phase, your system should ensure that the S, B, and Q
                     output signals hold the correct values. 
                     */
-                    
                     if (compute_finished) begin //monitor the compute_finished input signal. When compute_finished==1 on a positive clock edge,
                         inputs_loaded = 0;      //set inputs_loaded to 0
                         next_state = input_W;   // and go back to the beginning, waiting for new input data.
                         AXIS_TREADY = 1;
 
-                        W_mem_addr = 0;         //reset to start of memory
-                        X_mem_addr = 0;
+                        W_mem_addr_reg = 0;         //reset to start of memory
+                        X_mem_addr_reg = 0;
+                    end
+                    else begin
+                        AXIS_TREADY = 0;    //not ready to receive new inputs, so it must output AXIS_TREADY=0.
+                        inputs_loaded = 1;  //output inputs_loaded=1 during this phase.
+
+                        // allow the memory read interfaces (on the right side of Figure 1) to read data from the matrix memories.
+                        W_mem_addr_reg = W_read_addr;
+                        X_mem_addr_reg = X_read_addr;
                     end
                 end
 
@@ -274,6 +236,8 @@ module input_mems #(
                     inputs_loaded = 0;
                     next_state = input_W;
                     AXIS_TREADY = 1;
+                    W_mem_addr_reg = 0;         //reset to start of memory
+                    X_mem_addr_reg = 0;
                 end 
 
             endcase

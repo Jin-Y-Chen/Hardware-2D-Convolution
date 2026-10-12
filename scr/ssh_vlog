@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# vlog — compile on CAD. Run link first so rtl/ and tb/ are already there.
+# vlog [DUT] — compile on CAD. Run link first so rtl/ and tb/ are already there.
 
 set -euo pipefail
 # shellcheck source=libaray/cad_common.sh
@@ -7,23 +7,15 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/libaray/cad_common.sh"
 
 usage() {
     cat <<'EOF'
-vlog [file ...]
+vlog [DUT]
 
   Run link first. vlog does not sync rtl/ or tb/.
-
-  vlog                         design.files from all_config.json
-  vlog rtl/part1/mac.sv        that file (param.sv is still first)
-  vlog mac
+  [DUT] is a module name or a source path. rtl/param.sv is compiled first.
 
   -h, --help    this text
 EOF
 }
 
 [[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; exit 0; }
-
-files=("$@")
-# No arguments: compile design.files from constraint/all_config.json.
-if [[ ${#files[@]} -eq 0 ]]; then
-    mapfile -t files < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))["design"]["files"]))' "$ALL_CONFIG")
-fi
-cad_vlog "${files[@]}"
+[[ $# -gt 0 ]] || { usage >&2; exit 2; }
+cad_vlog "$@"

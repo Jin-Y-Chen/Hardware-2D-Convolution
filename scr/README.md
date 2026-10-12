@@ -24,9 +24,9 @@ Host lab40 lab40.ece.stonybrook.edu
 ```bash
 source scr/env.sh
 link
-vlog
-vsim mac_tb mac
-vsyn mac
+vlog [DUT]
+vsim [TOP] [DUT]
+vsyn [TOP]
 pdata
 pplot mac freq_MHz area_um2 MET
 ```
@@ -47,9 +47,11 @@ scr/
     └── plot.py
 ```
 
-`link` is the only command that syncs the project tree. `vlog` compiles on CAD and uploads only the generated `rtl/param.sv`. `vsim` and `vsyn` compile with that same step, then simulate or run `syn/runsynth.tcl`. Tool output is printed in the console and saved under `log/`.
+`link` is the only command that syncs the project tree. `vlog` compiles on CAD and uploads the generated `rtl/param.sv`. `vsim` and `vsyn` compile with that same step, then simulate or run `syn/runsynth.tcl`. Tool output is printed in the console and saved under `log/`.
 
-`PIPELINED` is `0` for `mac` and `1` for `mac_pipe`. A wrong mix prints one line, for example `vsim mac_tb mac` or `Set design.PIPELINED to 0 in constraint/all_config.json for mac.`
+`PIPELINED` is `0` for `mac` and `1` for `mac_pipe`. A wrong mix prints `Set design.PIPELINED to 0 in constraint/all_config.json for mac.` A bad `vlog`, `vsim`, or `vsyn` command prints that command's help.
+
+`vsim [TOP] [DUT]` for `input_mems` reads `design.WIDTH`, `R`, `C`, and `K` from `rtl/param.sv`. `sim.TVALID_PROB` and `sim.STAGE` stay in `constraint/all_config.json` and are passed to the testbench.
 
 ## pdata
 

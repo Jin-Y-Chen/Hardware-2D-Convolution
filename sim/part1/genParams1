@@ -19,4 +19,15 @@ else
     echo "\`define WIDTHVAL $1" > params.sv
     echo "\`define ACCWVAL $2" >> params.sv
     echo "\`define PIPELINEDVAL $3" >> params.sv
+    # mac.sv imports package param. This stands in for rtl/param.sv.
+    cat >> params.sv << 'EOF'
+package param;
+    localparam int WIDTH = `WIDTHVAL;
+    localparam int ACCW  = `ACCWVAL;
+    localparam int PIPELINED = `PIPELINEDVAL;
+
+    localparam signed [ACCW-1:0] MAXOUT = (1 <<< (WIDTH-1)) - 1;
+    localparam signed [ACCW-1:0] MINOUT = -(1 <<< (WIDTH-1));
+endpackage
+EOF
 fi

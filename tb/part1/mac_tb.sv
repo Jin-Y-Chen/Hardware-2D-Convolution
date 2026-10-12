@@ -10,8 +10,8 @@
 //      [options]:
 //       - If you want to run in GUI mode, remove -c
 
-// Note that this testbench takes WIDTH / ACCW / PIPELINED from rtl/param.sv,
-// generated from constraint/all_config.json. Compile param.sv first.
+// simParams1 compiles sim/part1/params.sv first, which defines WIDTHVAL, ACCWVAL,
+// and PIPELINEDVAL. vsim does not, and then those values come from rtl/param.sv.
 
 // Please see the project description for a high-level description of this testbench and how to run it. Comments are also included throughout to help understand how the testbench works.
 
@@ -91,9 +91,15 @@ endclass
 module mac_tb();
 
     parameter TESTS = 10000;             // the number of cycles of input to simulate
+`ifdef WIDTHVAL
+    parameter WIDTH = `WIDTHVAL;            // the number of bits in the inputs and the output
+    parameter ACCW  = `ACCWVAL;             // the number of bits in the accumulator
+    parameter PIPELINED = `PIPELINEDVAL;    // 0 = mac, 1 = mac_pipe
+`else
     parameter WIDTH = param::WIDTH;         // the number of bits in the inputs and the output
     parameter ACCW  = param::ACCW;          // the number of bits in the accumulator
-    parameter PIPELINED = param::PIPELINED;     // 0 = mac, 1 = mac_pipe (design.PIPELINED)
+    parameter PIPELINED = param::PIPELINED; // 0 = mac, 1 = mac_pipe (design.PIPELINED)
+`endif
 
     logic clk, reset;
     initial clk = 0;

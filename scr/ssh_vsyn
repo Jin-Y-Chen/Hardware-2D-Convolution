@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# vsyn <top> — compile, then dc_shell -f runsynth.tcl.
+# vsyn [TOP] — compile, then dc_shell -f runsynth.tcl.
 
 set -euo pipefail
 # shellcheck source=libaray/cad_common.sh
@@ -7,11 +7,9 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/libaray/cad_common.sh"
 
 usage() {
     cat <<'EOF'
-vsyn <top>
+vsyn [TOP]
 
-  vsyn mac
-  vsyn mac_pipe
-  vsyn --period 2 mac
+  vsyn --period NS [TOP]
 
   -h, --help     this text
   --clk NAME     saved as syn.clk
@@ -19,8 +17,6 @@ vsyn <top>
   --period NS    saved as syn.period_ns
 EOF
 }
-
-hint() { echo "$1" >&2; exit 2; }
 
 # Write one key in constraint/all_config.json. A value with a dot stays a float.
 set_json() {
@@ -76,18 +72,18 @@ TOP="" CLK_NAME="" RST_NAME="" CLK_PERIOD=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -h|--help) usage; exit 0 ;;
-        --clk)    [[ $# -ge 2 ]] || hint "vsyn --clk <name> <top>"; CLK_NAME="$2"; shift 2 ;;
-        --rst)    [[ $# -ge 2 ]] || hint "vsyn --rst <name> <top>"; RST_NAME="$2"; shift 2 ;;
-        --period) [[ $# -ge 2 ]] || hint "vsyn --period <ns> <top>"; CLK_PERIOD="$2"; shift 2 ;;
-        -*) hint "vsyn <top>" ;;
-        *) [[ -z "$TOP" ]] || hint "vsyn <top>"; TOP="$1"; shift ;;
+        --clk)    [[ $# -ge 2 ]] || { usage >&2; exit 2; }; CLK_NAME="$2"; shift 2 ;;
+        --rst)    [[ $# -ge 2 ]] || { usage >&2; exit 2; }; RST_NAME="$2"; shift 2 ;;
+        --period) [[ $# -ge 2 ]] || { usage >&2; exit 2; }; CLK_PERIOD="$2"; shift 2 ;;
+        -*) usage >&2; exit 2 ;;
+        *) [[ -z "$TOP" ]] || { usage >&2; exit 2; }; TOP="$1"; shift ;;
     esac
 done
 
-[[ -n "$TOP" ]] || hint "vsyn mac"
+[[ -n "$TOP" ]] || { usage >&2; exit 2; }
 DUT_FILE="$(locate_src "$TOP")"
 TOP="$(basename "$DUT_FILE" .sv)"
-[[ -f "$LOCAL_SYN/runsynth.tcl" ]] || hint "syn/runsynth.tcl is missing."
+[[ -f "$LOCAL_SYN/runsynth.tcl" ]] || { echo "syn/runsynth.tcl is missing." >&2; exit 2; }
 [[ -n "$CLK_NAME" ]]   && set_json syn clk "$CLK_NAME"
 [[ -n "$RST_NAME" ]]   && set_json syn rst "$RST_NAME"
 [[ -n "$CLK_PERIOD" ]] && set_json syn period_ns "$CLK_PERIOD"

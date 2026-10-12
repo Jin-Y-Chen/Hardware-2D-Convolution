@@ -10,7 +10,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/libaray/cad_common.sh"
 # Tool junk (work/, *.svf, command.log, …) is already dropped in cad_common.sh.
 declare -A TREE_EXTRAS
 TREE_EXTRAS[rtl]="--exclude /command.log --exclude /default.svf --exclude *.svf"
-TREE_EXTRAS[tb]="--exclude /README.md --exclude /part1/params.sv --exclude /part1/simParams1 --exclude /part1/genParams1 --exclude /part1/wave.do"
+TREE_EXTRAS[tb]="--exclude /README.md --exclude /part1/params.sv --exclude /part2/params.sv --exclude /part1/simParams1 --exclude /part1/genParams1 --exclude /part1/wave.do"
 TREE_EXTRAS[sim]="--exclude /part1/params.sv --exclude /part1/param.sv"   # old genParams1 output
 TREE_EXTRAS[syn]="--exclude /params.sv --exclude /command.log --exclude /default.svf --exclude *.svf"
 TREE_EXTRAS[log]="--exclude /README.md"
