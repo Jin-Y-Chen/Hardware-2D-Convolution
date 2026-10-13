@@ -10,7 +10,7 @@
   },
   "sim": {
     "seed": "507",
-    "TVALID_PROB": 1,
+    "TVALID_PROB": 0,
     "STAGE": 3
   },
   "syn": {

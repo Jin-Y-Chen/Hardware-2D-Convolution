@@ -80,7 +80,7 @@ module input_mems #(
 
     counter #(.SIZE(SIZE)) address_counter (
         .clk(clk), .reset(reset || rst_addr),
-        .inc_en(AXIS_TVALID && AXIS_TREADY && (state == input_X || state == input_W)),
+        .inc_en(AXIS_TVALID && AXIS_TREADY && (state == input_X || state == input_W)), //shared counter to maybe reduce area.  
         .prev_count(mem_addr),
         .new_count(mem_addr)
     );
@@ -105,17 +105,14 @@ module input_mems #(
 
     assign new_W = AXIS_TUSER[0];
 
-    FSM_STATE_UPDATE: always_ff @(posedge clk) begin
-        if (reset) begin //synchronized reset, update output on rising edge of clock with asserted reset
+    always_ff @(posedge clk) begin
+        if (reset) //synchronized reset, update output on rising edge of clock with asserted reset
             state <= input_W;
-        end
-
-        else begin
+        else
             state <= next_state;
-        end
     end 
 
-    POSITIVE_EDGE_LOGIC: always_ff @(posedge clk) begin
+    always_ff @(posedge clk) begin
         if (reset) begin
             valid_W <= 0;
             valid_B <= 0;
@@ -153,7 +150,7 @@ module input_mems #(
         end
     end
 
-    FSM_NEXT_STATE: always_comb begin
+    always_comb begin
         // every path assigns these, so synthesis makes combo logic instead of latches
         next_state = state;
         AXIS_TREADY = 0;
@@ -165,45 +162,46 @@ module input_mems #(
             rst_addr = 1;
         end 
         else begin
-            case (state)
-                // take in W matrix data via its AXI-Stream input interface.
-                input_W : begin
-                    AXIS_TREADY = 1;
-                    if (mem_addr == (K * K) - 1 && AXIS_TVALID) begin //This phase is complete after the entire 𝑊 matrix is loaded (𝐾2 values).
-                        next_state = input_B;
-                        rst_addr = 1;
-                    end
+        case (state)
+            // take in W matrix data via its AXI-Stream input interface.
+            input_W : begin
+                AXIS_TREADY = 1;
+                if (mem_addr == (K * K) - 1 && AXIS_TVALID) begin //This phase is complete after the entire 𝑊 matrix is loaded (𝐾2 values).
+                    next_state = input_B;
+                    rst_addr = 1;
                 end
-                // single handshake 
-                input_B: begin
-                    AXIS_TREADY = 1; //stay ready between W and X
-                    next_state = AXIS_TVALID ? input_X : state;
+            end
+            // single handshake 
+            input_B: begin
+                AXIS_TREADY = 1; //stay ready between W and X
+                next_state = AXIS_TVALID ? input_X : state;
+            end
+            // take in 𝑋 matrix data via its AXI-Stream input interface.
+            input_X : begin
+                AXIS_TREADY = 1;
+                if (mem_addr == (R * C) - 1 && AXIS_TVALID) begin //This phase is complete after the entire 𝑋 matrix is loaded(𝑅 × 𝐶 values)
+                    next_state = input_loaded;
+                    rst_addr = 1;
                 end
-                // take in 𝑋 matrix data via its AXI-Stream input interface.
-                input_X : begin
-                    AXIS_TREADY = 1;
-                    if (mem_addr == (R * C) - 1 && AXIS_TVALID) begin //This phase is complete after the entire 𝑋 matrix is loaded(𝑅 × 𝐶 values)
-                        next_state = input_loaded;
-                        rst_addr = 1;
-                    end
+            end
+            // In this phase, ensure that the S, B, and Q output signals hold the correct values.
+            input_loaded    : begin
+                AXIS_TREADY = 0; //not ready to receive new inputs, so it must output AXIS_TREADY=0.
+                if (is_finished) begin //if complete == 1, set inputs_loaded to 0
+                    inputs_loaded = 0;
+                    // TREADY is 0, so this beat stays on the bus. Branch only once it is valid.
+                    // new_W (TUSER[0]) is meaningful on that first beat: 1 reloads W, 0 skips to X.
+                    if (AXIS_TVALID)
+                        next_state = new_W ? input_W : input_X;
                 end
-                // In this phase, ensure that the S, B, and Q output signals hold the correct values.
-                input_loaded    : begin
-                    AXIS_TREADY = 0; //not ready to receive new inputs, so it must output AXIS_TREADY=0.
-                    if (is_finished) begin //if complete == 1, set inputs_loaded to 0
-                        inputs_loaded = 0; 
-                        //go back to the beginning, waiting for new input data of skiping input_W if new_W or TUSER[0] = 0
-                        next_state = new_W && AXIS_TVALID ? input_W : input_X; 
-                    end
-                    else
-                        inputs_loaded = 1; //output inputs_loaded=1 during this phase.
-                end
-
-                default : begin
-                    AXIS_TREADY = 0;
-                end 
-
-            endcase
+                else
+                    inputs_loaded = 1; //output inputs_loaded=1 during this phase.
+            end
+            //Lets hope it does not go to this state...
+            default : begin
+                AXIS_TREADY = 0;
+            end 
+        endcase
         end
     end
 
