@@ -79,35 +79,23 @@ class testdata #(parameter WIDTH=8, parameter R=8, parameter C=7, parameter K=3)
 
 endclass
 
-// simParams2 compiles sim/part2/params.sv first, which defines these macros.
-// vsim does not, and then WIDTH, R, C, and K come from rtl/param.sv.
+// This file defines `WIDTHVAL, `RVAL, `CVAL, `KVAL, `TVPR, and `STAGEVAL
+`include "params.sv"
 
 module input_mems_tb();
 
-    parameter TESTS  = 10000;      // the number of sets of inputs to simulate
-
-`ifdef WIDTHVAL
     parameter WIDTH  = `WIDTHVAL;  // WIDTH is the number of bits of each input value (X, W, B)
     parameter R      = `RVAL;      // R is the number of rows in the X matrix
     parameter C      = `CVAL;      // C is the number of cols in the X matrix
     parameter K      = `KVAL;      // K is the number of rows/cols in the W matrix
-`else
-    parameter WIDTH  = param::WIDTH;  // WIDTH is the number of bits of each input value (X, W, B)
-    parameter R      = param::R;      // R is the number of rows in the X matrix
-    parameter C      = param::C;      // C is the number of cols in the X matrix
-    parameter K      = param::K;      // K is the number of rows/cols in the W matrix
-`endif
+    parameter TESTS  = 10000;      // the number of sets of inputs to simulate
 
     // The probability that the testbench asserts AXIS_TVALID=1
     // on any given cycle. You can adjust this value to simulate different
     // scenarios. Valid values for this parameter are 0.001 to 1.
     // If the value is set to 0, then it will be randomized when you start
     // your simulation.
-`ifdef TVPR
     parameter real INPUT_TVALID_PROB = `TVPR;
-`else
-    parameter real INPUT_TVALID_PROB = 0;
-`endif
 
     // STAGE selects how much of the Part 2 specification this testbench
     // exercises, so that you can build and test this module a piece at a time.
@@ -121,11 +109,7 @@ module input_mems_tb();
     //   3 -- The complete specification, including with new_W = 0.
     //
     // Stage 3 is the complete test, and Stage 3 is what you submit.
-`ifdef STAGEVAL
     parameter STAGE = `STAGEVAL;
-`else
-    parameter STAGE = 3;
-`endif
 
     localparam MAXS        = ((R > C) ? R : C) - K + 1; // the largest useful stride
     localparam S_BITS      = $clog2(MAXS+1);            // the number of bits needed for S

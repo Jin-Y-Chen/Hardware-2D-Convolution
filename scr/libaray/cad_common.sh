@@ -97,6 +97,18 @@ pkg_path.write_text(
     "    localparam signed [ACCW-1:0] MINOUT = -(1 <<< (WIDTH-1));\n"
     "endpackage\n"
 )
+# input_mems_tb.sv does `include "params.sv". These names are the all_config fields.
+defines = cfg_path.parents[1] / "sim" / "part2" / "params.sv"
+defines.parent.mkdir(parents=True, exist_ok=True)
+defines.write_text(
+    "// Generated from constraint/all_config.json. Edit that file, not this one.\n"
+    f"`define WIDTHVAL {width}\n"   # design.WIDTH
+    f"`define RVAL {rows}\n"        # design.R
+    f"`define CVAL {cols}\n"        # design.C
+    f"`define KVAL {k}\n"           # design.K
+    f"`define TVPR {tvpr}\n"        # sim.TVALID_PROB
+    f"`define STAGEVAL {stage}\n"   # sim.STAGE
+)
 print(width, accw, pipelined, seed, clk, rst, period, rows, cols, k, tvpr, stage)
 PY
     ) || exit 2
@@ -229,8 +241,9 @@ cad_vlog() {
         files+=("$loc")
     done
     FILE_LIST="${files[*]}"   # vsyn reads this when it writes SRC_FILE
-    remote_dirs rtl
+    remote_dirs rtl sim/part2
     rsync_to_remote "$PARAM_PKG" "~/$REMOTE_PROJECT_REL/rtl/param.sv"
+    rsync_to_remote "$PROJECT_ROOT/sim/part2/params.sv" "~/$REMOTE_PROJECT_REL/sim/part2/params.sv"
     echo "vlog  ${FILE_LIST}"
     set +e
     remote_py vlog --proj "$REMOTE_PROJECT_REL" "${files[@]}"

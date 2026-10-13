@@ -1,5 +1,5 @@
 {
-  "note": "Edit this file. vlog reads it and regenerates rtl/param.sv from design. vsyn copies syn.clk, syn.rst, and syn.period_ns into syn/runsynth.tcl. sim.TVALID_PROB (0 randomizes) and sim.STAGE (1, 2, or 3) are passed to input_mems_tb by vsim and are not written into rtl/param.sv.",
+  "note": "Edit this file. vlog writes rtl/param.sv from design, and sim/part2/params.sv for input_mems_tb: WIDTHVAL=design.WIDTH, RVAL=design.R, CVAL=design.C, KVAL=design.K, TVPR=sim.TVALID_PROB, STAGEVAL=sim.STAGE. vsyn copies syn.clk, syn.rst, and syn.period_ns into syn/runsynth.tcl.",
   "design": {
     "WIDTH": 16,
     "ACCW": 48,
@@ -10,8 +10,8 @@
   },
   "sim": {
     "seed": "507",
-    "TVALID_PROB": 0.30,
-    "STAGE": 1
+    "TVALID_PROB": 1,
+    "STAGE": 3
   },
   "syn": {
     "clk": "clk",

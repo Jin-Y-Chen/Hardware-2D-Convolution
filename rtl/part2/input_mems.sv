@@ -25,8 +25,7 @@ module counter #(
     input [SIZE-1 : 0] prev_count,
     output logic [SIZE-1:0] new_count
 );
-
-    always_ff @(negedge clk) begin
+    always_ff @(posedge clk) begin //same rising edge as the memory write
         if (reset) begin
             new_count <= 0;
         end
@@ -66,7 +65,6 @@ module input_mems #(
     input [W_ADDR_BITS-1:0] W_read_addr,
     output logic signed [WIDTH-1:0] W_data
 );
-
     enum logic [1:0] {
         input_W, 
         input_B, 
@@ -74,22 +72,21 @@ module input_mems #(
         input_loaded} state, next_state;
 
     //internal logic to drive addr and wr_en of memory
-    logic new_W, hold_b,new_B, init_W_cycle, init_X_cycle, rst_address, delay_valid;
-    logic [SIZE-1:0] mem_addr, count_reg; 
+    logic new_W, rst_addr;
+    logic [SIZE-1:0] mem_addr;
 
     //internal register, non-memory component
-    logic [6:0] TUSER_Q;
-    logic [S_BITS-1:0] TUSER_S;
-    logic [WIDTH-1:0] B_reg;
+    logic valid_W, valid_B, valid_X, is_finished; //stay 1 after the first accepted beat of that phase
 
-    counter #(.SIZE(SIZE)) addresser (
-        .clk(clk), .reset(reset || rst_address), .inc_en(delay_valid && (state == input_X || state == input_W)),
-        .prev_count(count_reg),
+    counter #(.SIZE(SIZE)) address_counter (
+        .clk(clk), .reset(reset || rst_addr),
+        .inc_en(AXIS_TVALID && AXIS_TREADY && (state == input_X || state == input_W)),
+        .prev_count(mem_addr),
         .new_count(mem_addr)
     );
 
-    // W matrix 
-    memory #(.WIDTH(WIDTH), .SIZE(K * K)) W_matrix (
+    // W matrix
+    memory #(.WIDTH(WIDTH), .SIZE(K * K)) W_memory (
         .clk(clk),  //data will be stored in the W memory on positive clock edge
         .wr_en(AXIS_TVALID && AXIS_TREADY && (state == input_W)), 
         .addr((state == input_loaded) ? W_read_addr : mem_addr[W_ADDR_BITS-1:0]),
@@ -98,7 +95,7 @@ module input_mems #(
     );
 
     // X matrix memory
-    memory #(.WIDTH(WIDTH), .SIZE(R * C)) X_matrix (
+    memory #(.WIDTH(WIDTH), .SIZE(R * C)) X_memory (
         .clk(clk),  //data will be stored in the X memory on positive clock edge
         .wr_en(AXIS_TVALID && AXIS_TREADY && (state == input_X)), 
         .addr((state == input_loaded) ? X_read_addr : mem_addr[X_ADDR_BITS-1:0]),
@@ -107,82 +104,108 @@ module input_mems #(
     );
 
     assign new_W = AXIS_TUSER[0];
-    assign TUSER_S = AXIS_TUSER[S_BITS:1];
-    assign TUSER_Q = AXIS_TUSER[S_BITS+7:S_BITS+1];
-    
 
-    always_ff @(posedge clk) begin
-        if (reset) //synchronized reset, update output on rising edge of clock with asserted reset
+    FSM_STATE_UPDATE: always_ff @(posedge clk) begin
+        if (reset) begin //synchronized reset, update output on rising edge of clock with asserted reset
             state <= input_W;
+        end
+
         else begin
-            state <= next_state;    
-            delay_valid <= AXIS_TVALID && AXIS_TREADY;
-            count_reg <= mem_addr;
+            state <= next_state;
         end
     end 
 
-    always_comb begin
+    POSITIVE_EDGE_LOGIC: always_ff @(posedge clk) begin
+        if (reset) begin
+            valid_W <= 0;
+            valid_B <= 0;
+            valid_X <= 0;
+            is_finished <= 0;
+        end
+        //store the values of 𝑆 and 𝑄 during the first cycle of this state.
+        else if (AXIS_TVALID && AXIS_TREADY && !valid_W && (state == input_W)) begin //lock with SQ
+            S <= AXIS_TUSER[S_BITS:1];
+            Q <= AXIS_TUSER[S_BITS+7:S_BITS+1];
+            valid_W <= 1;
+            is_finished <= 0;
+        end
+        // take in the 𝐵 (bias) value on the next valid rising edge
+        else if (AXIS_TVALID && AXIS_TREADY && !valid_B && (state == input_B)) begin
+            B <= AXIS_TDATA;
+            valid_B <= 1;
+        end
+        else if (AXIS_TVALID && AXIS_TREADY && !valid_X && (state == input_X)) begin
+            valid_X <= 1;
+            is_finished <= 0;
+        end
+        //monitor the compute_finished input signal. When compute_finished==1 on a positive clock edge,
+        else if ((state == input_loaded) && compute_finished) begin
+            is_finished <= 1;
+        end
+        //skip input_W if new_W = 0. TREADY is 0 here, so this first beat is not accepted yet.
+        else if ((state == input_loaded) && is_finished && AXIS_TVALID) begin
+            is_finished <= 0;
+            valid_X <= 0;
+            if (new_W) begin
+                valid_W <= 0;
+                valid_B <= 0;
+            end
+        end
+    end
+
+    FSM_NEXT_STATE: always_comb begin
         if (reset) begin
             next_state = input_W;
+            rst_addr = 1;
+            AXIS_TREADY = 0;
         end 
         else begin
+            next_state = state;
             case (state)
-
-                input_W : begin 
-                    //store the values of 𝑆 and 𝑄 during the first cycle of this state. 
-                    if (init_W_cycle) begin //lock with SQ
-                        rst_address = 0;
-                        init_W_cycle = 0;
-                    end
-                        
-                    if (mem_addr == (K * K) - 1) begin //This phase is complete after the entire 𝑊 matrix is loaded (𝐾2 values).
+                // take in W matrix data via its AXI-Stream input interface.
+                input_W : begin
+                    AXIS_TREADY = 1;
+                    if (mem_addr == (K * K) - 1 && AXIS_TVALID) begin //This phase is complete after the entire 𝑊 matrix is loaded (𝐾2 values).
                         next_state = input_B;
-                        AXIS_TREADY = 0;
-                        rst_address = 1;
-                        new_B = 1;
+                        rst_addr = 1;
                     end
-
-                end 
-                // take in the 𝐵 (bias) value via the AXI-Stream input interface.
+                    else
+                        rst_addr = 0;
+                end
+                // single handshake 
                 input_B: begin
-                    
-                    if (AXIS_TVALID && AXIS_TREADY) begin
-                        B_reg <= AXIS_TDATA;
+                    if (AXIS_TVALID)
                         next_state = input_X;
-                        init_X_cycle = 1;
-                        rst_address = 1;
-                        AXIS_TREADY = 0;
-                    end
                 end
                 // take in 𝑋 matrix data via its AXI-Stream input interface.
                 input_X : begin
-                    if (init_X_cycle && AXIS_TVALID && AXIS_TREADY) begin
-                        rst_address = 0;
-                        init_X_cycle = 0;
-                    end                         
-                    else if (mem_addr == (R * C) - 1) begin //This phase is complete after the entire 𝑋 matrix is loaded(𝑅 × 𝐶 values)
+                    AXIS_TREADY = 1;
+                    if (mem_addr == (R * C) - 1 && AXIS_TVALID) begin //This phase is complete after the entire 𝑋 matrix is loaded(𝑅 × 𝐶 values)
                         next_state = input_loaded;
-                        rst_address = 1;
+                        rst_addr = 1;
                     end
- 
+                    else
+                        rst_addr = 0;
                 end
                 // begins after the inputs are complete.
                 input_loaded    : begin
                     /*
                     In this phase, your system should ensure that the S, B, and Q
-                    output signals hold the correct values. 
-                    */ 
-                    //monitor the compute_finished input signal. When compute_finished==1 on a positive clock edge,
-                    //set inputs_loaded to 0
-                    // go back to the beginning, waiting for new input data of 𝑊 matrix data via its AXI-Stream input interface.
-                    //skip input_W if new_W = 0, 
-                    //output inputs_loaded=1 during this phase.
-                    //not ready to receive new inputs, so it must output AXIS_TREADY=0.          
+                    output signals hold the correct values.
+                    */
+                    AXIS_TREADY = 0; //not ready to receive new inputs, so it must output AXIS_TREADY=0.
+                    if (is_finished) begin //if complete == 1, set inputs_loaded to 0
+                        inputs_loaded = 0; 
+                        if (AXIS_TVALID)
+                            //go back to the beginning, waiting for new input data of skiping input_W if new_W or TUSER[0] = 0
+                            next_state = new_W ? input_W : input_X; 
+                    end
+                    else
+                        inputs_loaded = 1; //output inputs_loaded=1 during this phase.
                 end
 
                 default : begin
-                    // take in 𝑊 matrix data via its AXI-Stream input interface.
-                    //skip input_W if new_W = 0, 
+                    AXIS_TREADY = 0;
                 end 
 
             endcase

@@ -75,7 +75,8 @@ def op_vlog(args):
     files = ["rtl/param.sv"] + [f for f in args.files if f != "rtl/param.sv"]
     sys.exit(stream(
         [questa("vlog"), "-64", "-sv", "+acc",
-         "+incdir+tb/part1", "+incdir+rtl", "+incdir+rtl/part1", *files],
+         "+incdir+tb/part1", "+incdir+tb/part2", "+incdir+sim/part2",
+         "+incdir+rtl", "+incdir+rtl/part1", *files],
         proj, proj / "log" / "vlog.log",
     ))
 
