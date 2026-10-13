@@ -64,6 +64,7 @@ esac
 
 files=("$DUT_FILE" "$TB_FILE")
 [[ -f "$LOCAL_TB/part1/${TOP}.c" ]] && files+=("tb/part1/${TOP}.c")
+[[ -f "$LOCAL_TB/part2/${TOP}.c" ]] && files+=("tb/part2/${TOP}.c")
 cad_vlog "${files[@]}"   # same compile as vlog, then simulate
 
 if [[ "$DUT" == input_mems ]]; then

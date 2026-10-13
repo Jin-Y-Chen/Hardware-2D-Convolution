@@ -186,6 +186,7 @@ RSYNC_TOOL_EXCLUDES=(
     --exclude '_vmake'
     --exclude '_lib*'
     --exclude '.nfs*'
+    --exclude '*.do'
 )
 
 # Sync one project folder (rtl, tb, sim, syn, or log) with CAD.

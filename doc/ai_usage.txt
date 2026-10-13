@@ -202,3 +202,13 @@ Date: 10/11
     Q: What is the differences between latency and throughput?
 
     R: Latency is the time for one input to finish (L = N_cyc t). Throughput is how many results finish per second (TP = 1/t after the pipe is full). Pipe can have higher TP and worse latency.
+
+    Q: can you do positive edge on a combinational block?
+
+    R: No. always_comb cannot use posedeg. A clock edge is sequential, so it belongs in always_ff 
+
+Date: 10/12
+
+    Q: When should AXIS_TREADY be low?
+
+    R: Low only when a transfer must not happen. The spec keeps it high through every W word, the one B word, and every X word, then low after the last X until compute_finished. That is the input_loaded phase, with inputs_loaded=1. It is not low between B and X. In the RTL it also drops in input_W when mem_addr hits the last W address, and for one cycle in input_B after B is accepted.

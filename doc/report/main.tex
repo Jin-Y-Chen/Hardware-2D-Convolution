@@ -552,6 +552,8 @@ The unpipelined \texttt{mac} is the better choice when area, power, or single-re
 %Q6
 \section{Potential for Deeper Pipelining}
 
+% At the 1.21~ns period where \texttt{mac\_pipe} meets timing, Table~\ref{tab:max-freq} places the critical path on the multiplier, from \texttt{input0} into \texttt{reg1}. This is the combinational $16\times 16$ multiply before the first pipeline register. The accumulate stage is already behind a register, so the adder is not what limits the clock. Adding another register inside the multiplier would split that path and should allow a shorter period. The same multiplier path is what violates timing from 833.33~MHz onward in Table~\ref{tab:pipe-frequency-area-slack-path}.
+
 \subsection{Multiplier Pipelining}
 
 % Based on your 
@@ -562,11 +564,12 @@ The unpipelined \texttt{mac} is the better choice when area, power, or single-re
 % module? Be specific about each of the module’s control inputs: which of them would need to change, 
 % and which would not?
 
-\subsection{Adder Pipelining}
-% Would pipelining inside of the adder be possible and a good idea? Why or why not?
+% Those extra registers would also change how the control signals line up with the data. \texttt{clk} and \texttt{reset} would stay as they are. \texttt{init\_acc} and \texttt{init\_value} should stay with the accumulator register as well. \texttt{init\_acc} already takes effect in one cycle and discards the product that is still in flight, so it should not be delayed with the new multiplier stages. \texttt{input\_valid} and \texttt{Q} would need one extra cycle of delay for each added stage, so they still arrive with the product they belong to. \texttt{input0} and \texttt{input1} would remain combinational into the first multiply stage.
 
-% Answer this question based on your understanding of the design and your answers to prior questions. 
-% You do not need to modify your design/code to answer this question.
+\subsection{Adder Pipelining}
+
+Pipelining the adder is another possible way to potentially improve the frequency of the design. However, it is not necessary if bottleneck is in the multiplier stage, attempts to pipeline the adder would not improve the critical path. Instead, it would only add more area and power to the design. Pipelining the adder would only be a good idea if the critical path is in the accumulator stage. 
+
 
 %Q7
 \section{Variable Parameter Synthesis Results}
