@@ -232,4 +232,4 @@ Date: 10/13
     ---------------------------------------------------
     Q: look at the code will it syntheize, is there any potential minior issues in sythesis
 
-    R: Yes. always_ff becomes registers. Latches: AXIS_TREADY missing in input_B, rst_addr missing in input_B and input_loaded, inputs_loaded only set in input_loaded. Assign all three in every state.
+    R: Yes. always_ff becomes registers. Assign AXIS_TREADY, rst_addr, input_loaded in all three in every state to avoid latches.

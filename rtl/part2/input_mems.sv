@@ -88,8 +88,8 @@ module input_mems #(
     // W matrix
     memory #(.WIDTH(WIDTH), .SIZE(K * K)) W_memory (
         .clk(clk),  //data will be stored in the W memory on positive clock edge
-        .wr_en(AXIS_TVALID && AXIS_TREADY && (state == input_W)), 
-        .addr((state == input_loaded) ? W_read_addr : mem_addr[W_ADDR_BITS-1:0]),
+        .wr_en(AXIS_TVALID && AXIS_TREADY && (state == input_W)), //only writen to W_memory in valid input_W
+        .addr((state == input_loaded) ? W_read_addr : mem_addr[W_ADDR_BITS-1:0]), //Read and write share the same port depening on the FSM state
         .data_in(AXIS_TDATA),   //data_in port should connect directly to the AXIS_TDATA
         .data_out(W_data)       //data_out port of the W memory should connect directly to the W_data
     );
@@ -97,8 +97,8 @@ module input_mems #(
     // X matrix memory
     memory #(.WIDTH(WIDTH), .SIZE(R * C)) X_memory (
         .clk(clk),  //data will be stored in the X memory on positive clock edge
-        .wr_en(AXIS_TVALID && AXIS_TREADY && (state == input_X)), 
-        .addr((state == input_loaded) ? X_read_addr : mem_addr[X_ADDR_BITS-1:0]),
+        .wr_en(AXIS_TVALID && AXIS_TREADY && (state == input_X)), //only writen to X_memory in valid input_X
+        .addr((state == input_loaded) ? X_read_addr : mem_addr[X_ADDR_BITS-1:0]), //Read and write share the same port depening on the FSM state
         .data_in(AXIS_TDATA),   //data_in port should connect directly to the AXIS_TDATA
         .data_out(X_data)       //data_out port of the X memory should connect directly to the X_data
     );
@@ -154,13 +154,17 @@ module input_mems #(
     end
 
     FSM_NEXT_STATE: always_comb begin
+        // every path assigns these, so synthesis makes combo logic instead of latches
+        next_state = state;
+        AXIS_TREADY = 0;
+        rst_addr = 0;
+        inputs_loaded = 0;
+
         if (reset) begin
             next_state = input_W;
             rst_addr = 1;
-            AXIS_TREADY = 0;
         end 
         else begin
-            next_state = state;
             case (state)
                 // take in W matrix data via its AXI-Stream input interface.
                 input_W : begin
@@ -169,13 +173,11 @@ module input_mems #(
                         next_state = input_B;
                         rst_addr = 1;
                     end
-                    else
-                        rst_addr = 0;
                 end
                 // single handshake 
                 input_B: begin
-                    if (AXIS_TVALID)
-                        next_state = input_X;
+                    AXIS_TREADY = 1; //stay ready between W and X
+                    next_state = AXIS_TVALID ? input_X : state;
                 end
                 // take in 𝑋 matrix data via its AXI-Stream input interface.
                 input_X : begin
@@ -184,21 +186,14 @@ module input_mems #(
                         next_state = input_loaded;
                         rst_addr = 1;
                     end
-                    else
-                        rst_addr = 0;
                 end
-                // begins after the inputs are complete.
+                // In this phase, ensure that the S, B, and Q output signals hold the correct values.
                 input_loaded    : begin
-                    /*
-                    In this phase, your system should ensure that the S, B, and Q
-                    output signals hold the correct values.
-                    */
                     AXIS_TREADY = 0; //not ready to receive new inputs, so it must output AXIS_TREADY=0.
                     if (is_finished) begin //if complete == 1, set inputs_loaded to 0
                         inputs_loaded = 0; 
-                        if (AXIS_TVALID)
-                            //go back to the beginning, waiting for new input data of skiping input_W if new_W or TUSER[0] = 0
-                            next_state = new_W ? input_W : input_X; 
+                        //go back to the beginning, waiting for new input data of skiping input_W if new_W or TUSER[0] = 0
+                        next_state = new_W && AXIS_TVALID ? input_W : input_X; 
                     end
                     else
                         inputs_loaded = 1; //output inputs_loaded=1 during this phase.
