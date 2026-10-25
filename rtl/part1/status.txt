@@ -1,0 +1,29 @@
+--Overview--
+
+Designs 'mac.sv' and 'mac_pipe' both correctly simulated the functional behvaior test with the 
+provided testbench 'mac_tb'.
+
+--Test Conducted--
+
+Both mac and mac_pipe were simulated with the provided testbench mac_tb in random-seed mode, 
+passing all 10,000 cycles with zero errors. Different parameter sizes for the integer bit 
+length, WIDTH = {8, 16}, and the accumulator width, ACCW = {24, 48}, were instantiated and 
+tested as specified.
+
+Some edge-case parameters were also considered to verify the minimum and maximum parameter sizes 
+for both designs. This includes WIDTH = {2, 32, 33}, each paired with ACCW = {2, 3, 4, 80, 81}. 
+As suspected, (WIDTH, ACCW) = (2, 2) or (2, 3) results in an accumulator overflow, indicated by 
+the error: PARAMETER ERROR: ACCW must be >= 2*WIDTH. All variations where ACCW >= 2*WIDTH, such 
+as (2, 4), (2, 80), and (32, 80), simulated successfully. Sizes where WIDTH > 32 or ACCW > 80 
+are blocked by the testbench as the intended design limitation.
+
+--Synthesized Report--
+
+Two 'mac.sv' synthesis files ("mac_w8_aw24.txt", "mac_w16_aw48.txt") were included with parameter 
+sizes of WIDTH = {8, 16} and ACCW = {24, 48}.
+
+Two mac_pipe synthesis files ("mac_pipe_w8_aw24.txt", "mac_pipe_w16_aw48.txt") were included with
+parameter sizes of WIDTH = {8, 16} and ACCW = {24, 48}.
+
+All synthesized report used period_ns = 1.21ns as the lowest period that MET the timing constant
+for just the 'mac_pipe.sv' design. 

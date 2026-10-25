@@ -1,8 +1,8 @@
 ##############################################
 # Setup: vsyn <top> fills these for the current top.
 # SRC_FILE paths are relative to syn/.
-set TOP_MOD_NAME "mac_pipe";
-set SRC_FILE [list "../rtl/param.sv" "../rtl/part1/mac_pipe.sv"];
+set TOP_MOD_NAME "input_mems";
+set SRC_FILE [list "../rtl/param.sv" "../rtl/part2/input_mems.sv"];
 # Multiple sources: set SRC_FILE [list "file1.sv" "file2.sv"];
 ###############################################
 
@@ -10,7 +10,7 @@ set SRC_FILE [list "../rtl/param.sv" "../rtl/part1/mac_pipe.sv"];
 # IO_DELAY stays in this file.
 set CLK_NAME   "clk";
 set RST_NAME   "reset";
-set CLK_PERIOD 1.21;
+set CLK_PERIOD 0.74;
 set IO_DELAY   0.08;
 
 # setup

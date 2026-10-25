@@ -1,0 +1,19 @@
+--Overview--
+
+Design 'input_mems.sv' correctly simulated the functional behavior tested with the
+provided testbench 'input_mens_tb.sv'. 
+
+--Test Conducted--
+
+The input_mems was simtulated with Stage 3 testbench in random-seed mode, pass all
+10,000 cycle with zero errors. Different parameter sizes for the integer bit length, 
+WIDTH = {10, 24}, Row = {9, 15}, Column = {8, 13}, and K-square = {4, 7} were instantiated 
+and tested as specified.
+
+--Synthesized Report--
+
+Two 'input_mems.sv' synthesis files ("input_mems_w10_r15_c13_k7", "input_mems_w24_r9_c8_k4") were 
+included with parameter sizes of WIDTH = {10, 24}, Row = {9, 15}, Column = {8, 13}, and K-square = {4, 7}.
+
+All synthesized report used period_ns = 0.74ns as the lowest period that MET the timing constant
+for the "input_mems_w24_r9_c8_k4" design. 

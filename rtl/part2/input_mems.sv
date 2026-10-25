@@ -37,10 +37,10 @@ endmodule
 
 
 module input_mems #(
-    parameter WIDTH = 24,
-    parameter R = 9,
-    parameter C = 8,
-    parameter K = 4,
+    parameter WIDTH = param::WIDTH,
+    parameter R = param::R,
+    parameter C = param::C,
+    parameter K = param::K,
     localparam MAXS = ((R > C) ? R : C) - K + 1,
     localparam S_BITS = $clog2(MAXS+1),
     localparam X_ADDR_BITS = $clog2(R*C),
@@ -128,7 +128,7 @@ module input_mems #(
         end
         // take in the 𝐵 (bias) value on the next valid rising edge
         else if (AXIS_TVALID && AXIS_TREADY && !valid_B && (state == input_B)) begin
-            B <= AXIS_TDATA;
+            B <= signed'(AXIS_TDATA);
             valid_B <= 1;
         end
         else if (AXIS_TVALID && AXIS_TREADY && !valid_X && (state == input_X)) begin
@@ -166,7 +166,7 @@ module input_mems #(
             // take in W matrix data via its AXI-Stream input interface.
             input_W : begin
                 AXIS_TREADY = 1;
-                if (mem_addr == (K * K) - 1 && AXIS_TVALID) begin //This phase is complete after the entire 𝑊 matrix is loaded (𝐾2 values).
+                if (mem_addr == unsigned'((K * K) - 1) && AXIS_TVALID) begin //This phase is complete after the entire 𝑊 matrix is loaded (𝐾2 values).
                     next_state = input_B;
                     rst_addr = 1;
                 end
@@ -179,7 +179,7 @@ module input_mems #(
             // take in 𝑋 matrix data via its AXI-Stream input interface.
             input_X : begin
                 AXIS_TREADY = 1;
-                if (mem_addr == (R * C) - 1 && AXIS_TVALID) begin //This phase is complete after the entire 𝑋 matrix is loaded(𝑅 × 𝐶 values)
+                if (mem_addr == unsigned'((R * C) - 1) && AXIS_TVALID) begin //This phase is complete after the entire 𝑋 matrix is loaded(𝑅 × 𝐶 values)
                     next_state = input_loaded;
                     rst_addr = 1;
                 end
