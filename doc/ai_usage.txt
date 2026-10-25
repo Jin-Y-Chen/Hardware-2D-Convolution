@@ -1,9 +1,6 @@
 AI Usage Log
 
-Scripts for Automation is written by AI
-Testbench is also enchanced with AI, display signal name so tha GUI is not necesesary 
-
-Date: 9/20, once upon good evening
+Date: 9/20,
     --------------------------------------------------
     Q: what does WIDTH mean in the context of a TUSER parameter? 
 
@@ -74,11 +71,15 @@ Date: 9/26,
     ---------------------------------------------------
     Q: *linking my simulation script, ssh_vsim, make sure to push correct parameter to remote and pull simulation log to host
 
-    R: *written and modify ssh_vsim to reference simParams1, which was encahned to display all signal
+    R: *written and modify ssh_vsim to reference simParams1, which was enchanted to display all signal
+
+    Q: How to directly instantiate module parameter by just modify package.sv file that the module included
+
+    R: Do parameter WIDTH = param::WIDTH, parameter ACCW  = param::ACCW
 
 Date: 9/27, 
     ---------------------------------------------------
-    Q: *Asking for specific edge cases: how to assign out = 0 initally without causing double assignment
+    Q: *Asking for specific edge cases: how to assign out = 0 initially without causing double assignment
 
     R: Q_reg is uninitialized, shifting cause Unknown
 
