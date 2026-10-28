@@ -1,3 +1,5 @@
+import param::*;
+
 module memory #(
     parameter WIDTH=16, SIZE=64,
     localparam LOGSIZE=$clog2(SIZE)
