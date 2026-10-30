@@ -8,7 +8,6 @@ REMOTE_USER="jinchen"
 REMOTE_NAME="CAD"
 REMOTE_HOST="lab40.ece.stonybrook.edu"
 REMOTE_PROJECT_REL="ese507/project"
-REMOTE_SYN_REL="ese507/project/syn"
 REMOTE_LOG_REL="ese507/project/log"
 
 # This file is scr/libaray/cad_common.sh; the repo root is two levels up.
@@ -16,7 +15,6 @@ LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$LIB_DIR/../.." && pwd)"
 LOCAL_RTL="$PROJECT_ROOT/rtl"
 LOCAL_TB="$PROJECT_ROOT/tb"
-LOCAL_SYN="$PROJECT_ROOT/syn"
 LOCAL_CONSTRAINT="$PROJECT_ROOT/constraint"
 LOCAL_LOG="$PROJECT_ROOT/log"
 ALL_CONFIG="$LOCAL_CONSTRAINT/all_config.json"
@@ -33,7 +31,7 @@ require_rsync "$@"
 
 # Write rtl/param.sv from constraint/all_config.json.
 # Sets P_WIDTH P_ACCW P_PIPE CFG_SEED CFG_CLK CFG_RST CFG_PERIOD
-#     P_R P_C P_K P_TVPR P_STAGE.
+#     P_R P_C P_K P_TVPR P_STAGE P_TRPR.
 # Part 2 names match genParams2: WIDTH R C K TVALID_PROB STAGE.
 apply_config() {
     local line
@@ -69,6 +67,7 @@ try:
     k = as_int("design", "K")
     stage = as_int("sim", "STAGE")
     tvpr = fmt_prob(cfg["sim"]["TVALID_PROB"])
+    trpr = fmt_prob(cfg["sim"]["TREADY_PROB"])
     seed = str(cfg["sim"]["seed"])
     clk = str(cfg["syn"]["clk"])
     rst = str(cfg["syn"]["rst"])
@@ -78,7 +77,7 @@ except Exception:
         "Edit constraint/all_config.json: "
         "design.WIDTH, design.ACCW, design.PIPELINED, "
         "design.R, design.C, design.K, "
-        "sim.TVALID_PROB, sim.STAGE, sim.seed, "
+        "sim.TVALID_PROB, sim.TREADY_PROB, sim.STAGE, sim.seed, "
         "syn.clk, syn.rst, syn.period_ns."
     )
 
@@ -97,24 +96,12 @@ pkg_path.write_text(
     "    localparam signed [ACCW-1:0] MINOUT = -(1 <<< (WIDTH-1));\n"
     "endpackage\n"
 )
-# input_mems_tb.sv does `include "params.sv". These names are the all_config fields.
-defines = cfg_path.parents[1] / "sim" / "part2" / "params.sv"
-defines.parent.mkdir(parents=True, exist_ok=True)
-defines.write_text(
-    "// Generated from constraint/all_config.json. Edit that file, not this one.\n"
-    f"`define WIDTHVAL {width}\n"   # design.WIDTH
-    f"`define RVAL {rows}\n"        # design.R
-    f"`define CVAL {cols}\n"        # design.C
-    f"`define KVAL {k}\n"           # design.K
-    f"`define TVPR {tvpr}\n"        # sim.TVALID_PROB
-    f"`define STAGEVAL {stage}\n"   # sim.STAGE
-)
-print(width, accw, pipelined, seed, clk, rst, period, rows, cols, k, tvpr, stage)
+print(width, accw, pipelined, seed, clk, rst, period, rows, cols, k, tvpr, stage, trpr)
 PY
     ) || exit 2
     # shellcheck disable=SC2086
     read -r P_WIDTH P_ACCW P_PIPE CFG_SEED CFG_CLK CFG_RST CFG_PERIOD \
-        P_R P_C P_K P_TVPR P_STAGE <<< "$line"
+        P_R P_C P_K P_TVPR P_STAGE P_TRPR <<< "$line"
 }
 
 # Same limits the input_mems testbench enforces at time zero.
@@ -136,6 +123,33 @@ if stage not in (1, 2, 3):
     problems.append("sim.STAGE must be 1, 2, or 3")
 if tvpr != 0 and not 0.001 <= tvpr <= 1:
     problems.append("sim.TVALID_PROB must be 0 (random) or from 0.001 to 1")
+if problems:
+    sys.exit("Edit constraint/all_config.json: " + "; ".join(problems) + ".")
+PY
+}
+
+# Limits Conv_tb checks at time zero. ACCW is derived from WIDTH and K.
+check_conv() {
+    python3 - "$P_WIDTH" "$P_R" "$P_C" "$P_K" "$P_TVPR" "$P_TRPR" <<'PY'
+import math, sys
+width, rows, cols, k = (int(float(sys.argv[i])) for i in (1, 2, 3, 4))
+tvpr, trpr = float(sys.argv[5]), float(sys.argv[6])
+problems = []
+if not 2 <= width < 32:
+    problems.append("design.WIDTH must be 2 <= WIDTH < 32")
+if rows < 3 or cols < 3:
+    problems.append("design.R and design.C must both be >= 3")
+if k < 2:
+    problems.append("design.K must be >= 2")
+if k >= rows or k >= cols:
+    problems.append("design.K must be < design.R and design.C")
+span = k * k * (1 << (2 * width - 2)) + (1 << (width - 1))
+accw = (math.ceil(math.log2(span)) if span > 1 else 0) + 1
+if accw > 80:
+    problems.append("ACCW derived from design.WIDTH and design.K must be <= 80")
+for name, val in (("sim.TVALID_PROB", tvpr), ("sim.TREADY_PROB", trpr)):
+    if val != 0 and not 0.001 <= val <= 1:
+        problems.append(name + " must be 0 (random) or from 0.001 to 1")
 if problems:
     sys.exit("Edit constraint/all_config.json: " + "; ".join(problems) + ".")
 PY
@@ -201,7 +215,7 @@ RSYNC_TOOL_EXCLUDES=(
     --exclude '*.do'
 )
 
-# Sync one project folder (rtl, tb, sim, syn, or log) with CAD.
+# Sync one project folder (rtl, tb, or log) with CAD. sim/ and syn/ stay on CAD.
 rsync_project_ssh() {
     local name="$1"
     shift
@@ -220,17 +234,41 @@ locate_src() {
     if [[ "$base" != */* ]]; then
         if [[ -f "$LOCAL_RTL/part1/${base}.sv" ]]; then echo "rtl/part1/${base}.sv"; return; fi
         if [[ -f "$LOCAL_RTL/part2/${base}.sv" ]]; then echo "rtl/part2/${base}.sv"; return; fi
+        if [[ -f "$LOCAL_RTL/part3/${base}.sv" ]]; then echo "rtl/part3/${base}.sv"; return; fi
         if [[ -f "$LOCAL_TB/part1/${base}.sv" ]]; then echo "tb/part1/${base}.sv"; return; fi
         if [[ -f "$LOCAL_TB/part2/${base}.sv" ]]; then echo "tb/part2/${base}.sv"; return; fi
+        if [[ -f "$LOCAL_TB/part3/${base}.sv" ]]; then echo "tb/part3/${base}.sv"; return; fi
+        if [[ -f "$LOCAL_TB/part4/${base}.sv" ]]; then echo "tb/part4/${base}.sv"; return; fi
         if [[ -f "$LOCAL_TB/part1/${base}.c" ]]; then echo "tb/part1/${base}.c"; return; fi
+        if [[ -f "$LOCAL_TB/part3/${base}.c" ]]; then echo "tb/part3/${base}.c"; return; fi
+        if [[ -f "$LOCAL_TB/part4/${base}.c" ]]; then echo "tb/part4/${base}.c"; return; fi
     fi
     [[ -f "$PROJECT_ROOT/$raw" ]] && { echo "$raw"; return; }
     echo "Not found: $1. Pass [DUT] or [TOP], or a path under rtl/ or tb/." >&2
     return 1
 }
 
+# Write params.sv on CAD for part 2 and part 3. Both testbenches `include "params.sv".
+# The host does not keep a sim/ folder for this.
+write_remote_params() {
+    remote_py params --proj "$REMOTE_PROJECT_REL" \
+        --width "$P_WIDTH" --rows "$P_R" --cols "$P_C" --k "$P_K" \
+        --tvpr "$P_TVPR" --trpr "$P_TRPR" --stage "$P_STAGE"
+}
+
+# Conv needs the rest of rtl/part3, not only Conv.sv.
+add_src() {
+    local f
+    for f in "${files[@]}"; do
+        [[ "$f" == "$1" ]] && return 0
+    done
+    files+=("$1")
+}
+
 # Compile on CAD. Does not sync the project tree (that is link).
-# Uploads the generated rtl/param.sv. Other sources must already be on CAD.
+# Uploads the generated rtl/param.sv and writes params.sv on CAD.
+# Conv also compiles rtl/part3/input_mems.sv, mac_pipe.sv, and fifo_out.sv.
+# Other sources must already be on CAD.
 cad_vlog() {
     apply_config
     local -a files=(rtl/param.sv)
@@ -238,12 +276,19 @@ cad_vlog() {
     for f in "$@"; do
         [[ "$f" == rtl/param.sv ]] && continue
         loc="$(locate_src "$f")"
-        files+=("$loc")
+        if [[ "$loc" == rtl/part3/Conv.sv ]]; then
+            add_src rtl/part3/input_mems.sv
+            add_src rtl/part3/mac_pipe.sv
+            add_src rtl/part3/fifo_out.sv
+            add_src rtl/part3/Conv.sv
+        else
+            add_src "$loc"
+        fi
     done
-    FILE_LIST="${files[*]}"   # vsyn reads this when it writes SRC_FILE
-    remote_dirs rtl sim/part2
+    FILE_LIST="${files[*]}"   # vsyn reads this when it writes SRC_FILE on CAD
+    remote_dirs rtl
     rsync_to_remote "$PARAM_PKG" "~/$REMOTE_PROJECT_REL/rtl/param.sv"
-    rsync_to_remote "$PROJECT_ROOT/sim/part2/params.sv" "~/$REMOTE_PROJECT_REL/sim/part2/params.sv"
+    write_remote_params
     echo "vlog  ${FILE_LIST}"
     set +e
     remote_py vlog --proj "$REMOTE_PROJECT_REL" "${files[@]}"

@@ -1,5 +1,5 @@
 {
-  "note": "Edit this file. vlog writes rtl/param.sv from design, and sim/part2/params.sv for input_mems_tb: WIDTHVAL=design.WIDTH, RVAL=design.R, CVAL=design.C, KVAL=design.K, TVPR=sim.TVALID_PROB, STAGEVAL=sim.STAGE. vsyn copies syn.clk, syn.rst, and syn.period_ns into syn/runsynth.tcl.",
+  "note": "Edit this file. vlog writes rtl/param.sv from design, and params.sv on CAD: WIDTHVAL=design.WIDTH, RVAL=design.R, CVAL=design.C, KVAL=design.K, TVPR=sim.TVALID_PROB, TRPR=sim.TREADY_PROB, STAGEVAL=sim.STAGE. vsyn writes syn.clk, syn.rst, and syn.period_ns into syn/runsynth.tcl on CAD.",
   "design": {
     "WIDTH": 10,
     "ACCW": 24,
@@ -11,6 +11,7 @@
   "sim": {
     "seed": "0", 
     "TVALID_PROB": 0,
+    "TREADY_PROB": 0,
     "STAGE": 3
   },
   "syn": {

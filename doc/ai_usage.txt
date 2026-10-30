@@ -234,3 +234,9 @@ Date: 10/13
     Q: look at the code will it syntheize, is there any potential minior issues in sythesis
 
     R: Yes. always_ff becomes registers. Assign AXIS_TREADY, rst_addr, input_loaded in all three in every state to avoid latches.
+
+Date: 10/30 
+
+    Q: is this legal: assign a[63:32] = 0; assign a[31:0] = 1; as long as the index don't overlap the non-blocking assign of the same array is fine? 
+
+    A: Legal, for statment example inside always_ff tool will warm but not reject

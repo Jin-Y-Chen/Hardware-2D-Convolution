@@ -1,5 +1,3 @@
-import param::*;
-
 module pre_accum_ff #(
     parameter WIDTH = param::WIDTH,
     parameter ACCW  = param::ACCW
@@ -75,6 +73,8 @@ different behaviors at two different latencies.
 module mac_pipe #(
     parameter WIDTH = param::WIDTH,
     parameter ACCW  = param::ACCW
+    localparam signed [ACCW-1:0] MAXOUT = (1 <<< (WIDTH-1)) - 1,
+    localparam signed [ACCW-1:0] MINOUT = -(1 <<< (WIDTH-1))
 )(
     input logic signed [WIDTH-1:0] input0, input1, init_value,
     input [6:0] Q,
