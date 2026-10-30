@@ -67,9 +67,7 @@ module Conv #(
 
     counter #(
         .SIZE(W_ADDR_BITS)
-    ) window_ptr(
-        .SIZE(W_ADDR_BITS)
-    ) window_ptr(
+    ) w_ptr(
         .clk(clk), .reset(reset),
         .inc_en(input_loaded), 
         .prev_count(W_read_addr), 
@@ -82,7 +80,7 @@ module Conv #(
         .SIZE(X_ROW_BITS)
     ) X_row_ptr(
         .clk(clk), .reset(reset),
-        .inc_en(input_loaded), 
+        .inc_en(input_loaded && en_row), 
         .prev_count(X_read_addr[X_ADDR_BITS-1:X_COLUMN_BITS]), 
         .new_count(X_read_addr[X_ADDR_BITS-1:X_COLUMN_BITS])
         .prev_count(X_read_addr[X_ADDR_BITS-1:X_COLUMN_BITS]), 
@@ -91,9 +89,9 @@ module Conv #(
 
     counter #(
         .SIZE(X_COLUMN_BITS)
-    ) X_column_ptr(
+    ) X_col_ptr(
         .clk(clk), .reset(reset),
-        .inc_en(input_loaded), 
+        .inc_en(input_loaded && en_col), 
         .prev_count(X_read_addr[X_COLUMN_BITS-1:0]), 
         .new_count(X_read_addr[X_COLUMN_BITS-1:0])
     )
@@ -134,54 +132,6 @@ module Conv #(
     direct what S should drived (row or colume). 
     */
 
-<<<<<<< HEAD
-=======
-    counter #(
-        .SIZE(X_COLUMN_BITS)
-    ) X_column_ptr(
-        .clk(clk), .reset(reset),
-        .inc_en(input_loaded), 
-        .prev_count(X_read_addr[X_COLUMN_BITS-1:0]), 
-        .new_count(X_read_addr[X_COLUMN_BITS-1:0])
-    )
-
-    /* since w-matrix is always a saqure matrix (K by K),
-    we need 2log(K) bit to address whole matrix, such that
-    more significant bits of log(K) bits address the row, 
-    and less significant bits of log(K) bits address the column.
-
-    similar fashsion with X-matrix (R by C), such that
-    log(R) + log(C) = log(RC)
-
-    then for the expression
-    accumulator_Reg = B
-    ...
-    accumulator_Reg += X[R*S+j][C*S+i] * W[j][i]
-
-
-    column_window = X[log(C)-1:0]
-    next_column_window = column + S
-    column_i = (next_column_window) + K[log(k)-1:1
-
-    *note S is only apply to column or row not both at the same time
-    such that if next_column_window > C then S should be apply to 
-    rows_Window instead and next_column_window = 0 again. 
-
-    row_window = X[log(RC)-1:log(C)]
-    next_row_window = row_window + S
-    row_j : (next_row_window) + K[log(KK)-1:log(K)]
-
-    X[r*S+1][c*S+j] = X[row_j concat column_i] (h, s), where h is 
-    just (j concat i) of length log(KK), which could just be a 
-    simple counter that iterated through the whole window of the 
-    K by K of W-matrix. The simple counter is also the logic 
-    for address elements by W[j][i].
-
-    S is constant during this phase, but additional logic has to
-    direct what S should drived (row or colume). 
-    */
-
->>>>>>> 1138f922079ef74090b8153a8adbff02e7b569d8
     input_mems #(
         .WIDTH(WIDTH), .R(R), .C(C), .K(K)
     ) axis_in (
@@ -226,15 +176,41 @@ module Conv #(
     ) axis_out(
         .clk(clk), .reset(reset),
         .IN_AXIS_TDATA(out),
-        .IN_AXIS_TVALID(),
-        .IN_AXIS_TREADY(),
-        .OUT_AXIS_TDATA(OUTPUT_TREADY),
+        .IN_AXIS_TVALID(),  //input pipelined valid signal
+        .IN_AXIS_TREADY(),  //out check last valid for complete 
 
         .IN_AXIS_TREADY(INPUT_TREADY),
-        .OUT_AXIS_TDATA(OUTPUT_TDATA), //check last valid for complete 
+        .OUT_AXIS_TDATA(OUTPUT_TDATA), 
         .OUT_AXIS_TVALID(OUTPUT_TVALID)
     );
 
+    enum logic [1:0] {
+        load_B, 
+        inc_X_col,
+        inc_X_row,
+        inc_stride } state, next_state;
+
+    always_ff @(posedge clk) begin
+        if (reset)
+            state <= load_B;
+        else 
+            state <= next_state;
+    end
+
+    always_comb begin
+        case (state)
+
+        load_B : begin
+        end
+        inc_X_col : begin
+        end
+        inc_x_row : begin
+        end
+        inc_stride : begin
+        end 
+        default :
+            next_state <= load_B;
+    end 
 
 /*Then, your new Part 3 control logic will be responsible for reading the input data from the input
 memories using the X_read_addr and W_read_addr signals and feeding the values of 𝑋, 𝑊, and

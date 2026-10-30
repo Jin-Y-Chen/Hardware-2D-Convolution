@@ -198,9 +198,7 @@ module input_mems #(
                     inputs_loaded = 1; //output inputs_loaded=1 during this phase.
             end
             //Lets hope it does not go to this state...
-            default : begin
-                AXIS_TREADY = 0;
-            end 
+            default : AXIS_TREADY = 0;
         endcase
         end
     end
