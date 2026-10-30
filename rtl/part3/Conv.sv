@@ -12,7 +12,10 @@ module counter #(
 );
     always_ff @(posedge clk) begin //same rising edge as the memory write
         if (reset)
+        if (reset)
             new_count <= 0;
+        else
+            new_count <= prev_count + inc_en;
         else
             new_count <= prev_count + inc_en;
     end 
@@ -27,7 +30,10 @@ module Conv #(
     localparam X_ADDR_BITS = $clog2(R*C),
     localparam X_COLUMN_BITS = $clog2(C),
     localparam X_ROW_BITS = $clog2(R),
+    localparam X_COLUMN_BITS = $clog2(C),
+    localparam X_ROW_BITS = $clog2(R),
     localparam W_ADDR_BITS = $clog2(K*K),
+    localparam W_COLUMN_BITS = $clog2(K),
     localparam W_COLUMN_BITS = $clog2(K),
     localparam MAXS = ((R > C) ? R : C) - K + 1,
     localparam S_BITS = $clog2(MAXS+1),
@@ -40,8 +46,10 @@ module Conv #(
     input AXIS_TVALID,
     input [S_BITS+7:0] AXIS_TUSER,
     output INPUT_TREADY,
+    output INPUT_TREADY,
 
     //FIFO-queue output
+    input OUTPUT_TREADY,
     input OUTPUT_TREADY,
     output [WIDTH-1:0] OUTPUT_TDATA,
     output OUTPUT_TVALID
@@ -60,6 +68,8 @@ module Conv #(
     counter #(
         .SIZE(W_ADDR_BITS)
     ) window_ptr(
+        .SIZE(W_ADDR_BITS)
+    ) window_ptr(
         .clk(clk), .reset(reset),
         .inc_en(input_loaded), 
         .prev_count(W_read_addr), 
@@ -69,11 +79,60 @@ module Conv #(
     counter #(
         .SIZE(X_ROW_BITS)
     ) X_row_ptr(
+        .SIZE(X_ROW_BITS)
+    ) X_row_ptr(
         .clk(clk), .reset(reset),
         .inc_en(input_loaded), 
         .prev_count(X_read_addr[X_ADDR_BITS-1:X_COLUMN_BITS]), 
         .new_count(X_read_addr[X_ADDR_BITS-1:X_COLUMN_BITS])
+        .prev_count(X_read_addr[X_ADDR_BITS-1:X_COLUMN_BITS]), 
+        .new_count(X_read_addr[X_ADDR_BITS-1:X_COLUMN_BITS])
     );
+
+    counter #(
+        .SIZE(X_COLUMN_BITS)
+    ) X_column_ptr(
+        .clk(clk), .reset(reset),
+        .inc_en(input_loaded), 
+        .prev_count(X_read_addr[X_COLUMN_BITS-1:0]), 
+        .new_count(X_read_addr[X_COLUMN_BITS-1:0])
+    )
+
+    /* since w-matrix is always a saqure matrix (K by K),
+    we need 2log(K) bit to address whole matrix, such that
+    more significant bits of log(K) bits address the row, 
+    and less significant bits of log(K) bits address the column.
+
+    similar fashsion with X-matrix (R by C), such that
+    log(R) + log(C) = log(RC)
+
+    then for the expression
+    accumulator_Reg = B
+    ...
+    accumulator_Reg += X[R*S+j][C*S+i] * W[j][i]
+
+
+    column_window = X[log(C)-1:0]
+    next_column_window = column + S
+    column_i = (next_column_window) + K[log(k)-1:1
+
+    *note S is only apply to column or row not both at the same time
+    such that if next_column_window > C then S should be apply to 
+    rows_Window instead and next_column_window = 0 again. 
+
+    row_window = X[log(RC)-1:log(C)]
+    next_row_window = row_window + S
+    row_j : (next_row_window) + K[log(KK)-1:log(K)]
+
+    X[r*S+1][c*S+j] = X[row_j concat column_i] (h, s), where h is 
+    just (j concat i) of length log(KK), which could just be a 
+    simple counter that iterated through the whole window of the 
+    K by K of W-matrix. The simple counter is also the logic 
+    for address elements by W[j][i].
+
+    S is constant during this phase, but additional logic has to
+    direct what S should drived (row or colume). 
+    */
 
 <<<<<<< HEAD
 =======
@@ -133,11 +192,14 @@ module Conv #(
         .compute_finished(compute_finished),
 
         .AXIS_TREADY(INPUT_TREADY),
+        .AXIS_TREADY(INPUT_TREADY),
         .input_loaded(input_loaded),
         .S(S), .B(B), .Q(Q),
         .X_read_addr(X_read_addr), .X_data(X_data),
         .W_read_addr(W_read_addr), .W_data(W_data)
     );
+    
+    W_read_addr[X_ADDR_BITS-1:X_COLUMN_BITS] += 1 
     
     W_read_addr[X_ADDR_BITS-1:X_COLUMN_BITS] += 1 
 
