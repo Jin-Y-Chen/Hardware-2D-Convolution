@@ -7,7 +7,7 @@ pplot mac_pipe freq_MHz 'total_uw*period_ns' MET
 MET keeps only rows whose timing is MET.
 Quote a product so the shell does not expand *: 'total_uw*period_ns'
 or '[total_uw * period_ns]'.
-One file writes data/part1/<file>_<x>_<y>.pdf.
+One file writes data/partN/<file>_<x>_<y>.pdf next to that CSV.
 Several files share one graph.
 """
 
@@ -26,7 +26,7 @@ except ImportError:
     sys.exit("pplot needs reportlab. Install it with:  python3 -m pip install --user reportlab")
 
 ROOT = Path(__file__).resolve().parents[2]
-PART = ROOT / "data" / "part1"
+PARTS = [ROOT / "data" / name for name in ("part1", "part2", "part3")]
 
 PANEL_W = 480
 PANEL_H = 360
@@ -42,11 +42,14 @@ def num(text):
 
 def csv_path(name):
     path = Path(name)
-    if not path.is_file():
-        path = PART / (name if name.endswith(".csv") else f"{name}.csv")
-    if not path.is_file():
-        sys.exit(f"No {path}. Run pdata first.")
-    return path
+    if path.is_file():
+        return path
+    filename = name if name.endswith(".csv") else f"{name}.csv"
+    for part in PARTS:
+        candidate = part / filename
+        if candidate.is_file():
+            return candidate
+    sys.exit(f"No {PARTS[-1] / filename}. Run pdata first.")
 
 
 def load(path):
@@ -184,7 +187,7 @@ def mark(pdf, shape, x, y, color, page_h):
         pdf.circle(x, page_h - y, 4, stroke=0, fill=1)
 
 
-def draw(series, x_key, y_key, timing):
+def draw(series, x_key, y_key, timing, out_dir):
     xs = [x for _, points in series for x, _ in points]
     ys = [y for _, points in series for _, y in points]
     x0, x1, x_ticks = scale(xs)
@@ -203,7 +206,7 @@ def draw(series, x_key, y_key, timing):
 
     names = "_".join(name for name, _ in series)
     suffix = f"_{timing}" if timing else ""
-    out = PART / f"{names}_{axis_file(x_key)}_{axis_file(y_key)}{suffix}.pdf"
+    out = out_dir / f"{names}_{axis_file(x_key)}_{axis_file(y_key)}{suffix}.pdf"
     pdf = canvas.Canvas(str(out), pagesize=(PANEL_W, page_h))
 
     pdf.setStrokeColor(HexColor("#222222"))
@@ -334,7 +337,7 @@ def main():
         if not points:
             sys.exit(f"No {which} with numbers in {x_key} and {y_key} in {path.name}.")
         series.append((path.stem, points))
-    out = draw(series, x_key, y_key, timing)
+    out = draw(series, x_key, y_key, timing, csv_path(names[0]).parent)
     print(out.relative_to(ROOT))
 
 

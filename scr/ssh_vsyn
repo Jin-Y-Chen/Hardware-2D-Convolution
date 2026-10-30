@@ -33,41 +33,6 @@ except Exception:
 PY
 }
 
-# Patch TOP_MOD_NAME, clock, and SRC_FILE in syn/runsynth.tcl.
-# rtl/part1/mac.sv is rewritten to ../rtl/part1/mac.sv because dc_shell runs in syn/.
-write_runsynth() {
-    local top="$1" clk="$2" rst="$3" period="$4"
-    shift 4
-    python3 - "$LOCAL_SYN/runsynth.tcl" "$top" "$clk" "$rst" "$period" "$@" <<'PY'
-import pathlib, re, sys
-tcl = pathlib.Path(sys.argv[1])
-top, clk, rst, period = sys.argv[2:6]
-
-def rtl_rel(f):
-    f = f.replace("\\", "/")
-    for pfx in ("../rtl/", "rtl/", "./"):
-        if f.startswith(pfx):
-            f = f[len(pfx):]
-    return "../rtl/" + f
-
-files = [rtl_rel(f) for f in sys.argv[6:]]
-src = f'"{files[0]}"' if len(files) == 1 else "[list " + " ".join(f'"{f}"' for f in files) + "]"
-text = tcl.read_text(encoding="utf-8")
-subs = {
-    r'(set TOP_MOD_NAME )"[^"]*"': rf'\g<1>"{top}"',
-    r'(set CLK_NAME\s+)"[^"]*"':   rf'\g<1>"{clk}"',
-    r'(set RST_NAME\s+)"[^"]*"':   rf'\g<1>"{rst}"',
-    r'(set CLK_PERIOD\s+)[^;]+':   rf'\g<1>{period}',
-    r'set SRC_FILE .*':            "set SRC_FILE " + src + ";",
-}
-for pat, repl in subs.items():
-    text, n = re.subn(pat, repl, text, count=1, flags=re.M)
-    if n != 1:
-        sys.exit("Could not update syn/runsynth.tcl (TOP_MOD_NAME, CLK_NAME, RST_NAME, CLK_PERIOD, SRC_FILE).")
-tcl.write_text(text, encoding="utf-8")
-PY
-}
-
 TOP="" CLK_NAME="" RST_NAME="" CLK_PERIOD=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -83,16 +48,15 @@ done
 [[ -n "$TOP" ]] || { usage >&2; exit 2; }
 DUT_FILE="$(locate_src "$TOP")"
 TOP="$(basename "$DUT_FILE" .sv)"
-[[ -f "$LOCAL_SYN/runsynth.tcl" ]] || { echo "syn/runsynth.tcl is missing." >&2; exit 2; }
 [[ -n "$CLK_NAME" ]]   && set_json syn clk "$CLK_NAME"
 [[ -n "$RST_NAME" ]]   && set_json syn rst "$RST_NAME"
 [[ -n "$CLK_PERIOD" ]] && set_json syn period_ns "$CLK_PERIOD"
 
-cad_vlog "$DUT_FILE"   # same compile as vlog, then runsynth.tcl
-write_runsynth "$TOP" "$CFG_CLK" "$CFG_RST" "$CFG_PERIOD" $FILE_LIST
-
-remote_dirs syn
-rsync_to_remote "$LOCAL_SYN/runsynth.tcl" "~/$REMOTE_SYN_REL/runsynth.tcl"
+cad_vlog "$DUT_FILE"   # same compile as vlog, then runsynth.tcl on CAD
+# shellcheck disable=SC2086
+remote_py runsynth --proj "$REMOTE_PROJECT_REL" \
+    --top "$TOP" --clk "$CFG_CLK" --rst "$CFG_RST" --period "$CFG_PERIOD" \
+    $FILE_LIST
 echo "vsyn  $TOP  dc_shell -f runsynth.tcl"
 set +e
 remote_py vsyn --proj "$REMOTE_PROJECT_REL"
@@ -100,7 +64,4 @@ rc=$?
 set -e
 mkdir -p "$LOCAL_LOG"
 rsync_from_remote "~/$REMOTE_LOG_REL/vsyn.log" "$LOCAL_LOG/vsyn.log" || true
-rsync_from_remote "~/$REMOTE_SYN_REL/gates.v" "$LOCAL_SYN/gates.v" || true
-rsync_from_remote "~/$REMOTE_SYN_REL/command.log" "$LOCAL_SYN/command.log" || true
-rsync_from_remote "~/$REMOTE_SYN_REL/default.svf" "$LOCAL_SYN/default.svf" || true
 exit "$rc"

@@ -14,6 +14,8 @@ vsim [TOP] [DUT]
   [TOP] is the testbench. [DUT] is the design.
   When [DUT] is input_mems, WIDTH, R, C, and K come from rtl/param.sv.
   TVALID_PROB and STAGE come from sim in constraint/all_config.json.
+  When [DUT] is Conv, vlog also compiles rtl/part3 input_mems, mac_pipe, and fifo_out.
+  TVALID_PROB and TREADY_PROB come from sim in constraint/all_config.json.
 
   -h, --help     this text
   -s, --seed N   one run (default: sim.seed)
@@ -60,15 +62,27 @@ case "$DUT" in
         check_input_mems || exit $?
         vsim_args+=(--stage "$P_STAGE" --tvalid "$P_TVPR")
         ;;
+    Conv)
+        check_conv || exit $?
+        ;;
 esac
 
 files=("$DUT_FILE" "$TB_FILE")
-[[ -f "$LOCAL_TB/part1/${TOP}.c" ]] && files+=("tb/part1/${TOP}.c")
-[[ -f "$LOCAL_TB/part2/${TOP}.c" ]] && files+=("tb/part2/${TOP}.c")
+for part in part1 part2 part3 part4; do
+    [[ -f "$LOCAL_TB/$part/${TOP}.c" ]] && files+=("tb/$part/${TOP}.c")
+done
+# Conv_tb calls calcOutput in test_helper.c.
+if [[ "$TOP" == Conv_tb ]]; then
+    for part in part3 part4; do
+        [[ -f "$LOCAL_TB/$part/test_helper.c" ]] && files+=("tb/$part/test_helper.c")
+    done
+fi
 cad_vlog "${files[@]}"   # same compile as vlog, then simulate
 
 if [[ "$DUT" == input_mems ]]; then
     echo "vsim  $TOP  $DUT  seed=$SEED  WIDTH=$P_WIDTH R=$P_R C=$P_C K=$P_K TVALID_PROB=$P_TVPR STAGE=$P_STAGE"
+elif [[ "$DUT" == Conv ]]; then
+    echo "vsim  $TOP  $DUT  seed=$SEED  WIDTH=$P_WIDTH R=$P_R C=$P_C K=$P_K TVALID_PROB=$P_TVPR TREADY_PROB=$P_TRPR"
 else
     echo "vsim  $TOP  $DUT  seed=$SEED"
 fi

@@ -1,5 +1,3 @@
-import param::*;
-
 /*
  the accumulator register ACCW bits wide and let it wrap around naturally.
 
@@ -26,7 +24,9 @@ value.
 
 module mac #(
     parameter WIDTH = param::WIDTH,
-    parameter ACCW  = param::ACCW
+    parameter ACCW  = param::ACCW,
+    localparam signed [ACCW-1:0] MAXOUT = (1 <<< (WIDTH-1)) - 1,
+    localparam signed [ACCW-1:0] MINOUT = -(1 <<< (WIDTH-1))
 )(
     input logic signed [WIDTH-1:0] input0, input1, init_value,
     input [6:0] Q,

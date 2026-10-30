@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read log/vsyn.log and append one row to data/part1/<top>.csv.
+"""Read log/vsyn.log and append one row to data/part1, part2, or part3.
 
 <top> is TOP_MOD_NAME from the log (mac, mac_pipe, …).
 The same design, WIDTH, ACCW, and period replaces its old row.
@@ -14,7 +14,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 LOG = ROOT / "log" / "vsyn.log"
 PARAM = ROOT / "rtl" / "param.sv"
-OUT_DIR = ROOT / "data" / "part1"
+
+
+def out_dir(design):
+    part = {"input_mems": "part2", "Conv": "part3"}.get(design, "part1")
+    return ROOT / "data" / part
 
 COLS = [
     "design", "width", "accw", "period_ns", "freq_MHz",
@@ -143,7 +147,7 @@ def main():
     row = parse(log_path.read_text(encoding="utf-8", errors="replace"), param_text)
     if not row["design"]:
         sys.exit(f"No TOP_MOD_NAME in {log_path}. Run vsyn <top> first.")
-    out = OUT_DIR / f"{row['design']}.csv"
+    out = out_dir(row["design"]) / f"{row['design']}.csv"
     rows = upsert(out, row)
     print(f"{out.relative_to(ROOT)}  {row['design']}  {row['period_ns']} ns  {row['timing']}  {len(rows)} rows")
 
