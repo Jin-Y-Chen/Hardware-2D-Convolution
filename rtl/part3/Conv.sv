@@ -74,8 +74,6 @@ module Conv #(
         .new_count(X_read_addr)
     );
 
-
-
     input_mems #(
         .WIDTH(WIDTH), .R(R), .C(C), .K(K)
     ) axis_in (
@@ -104,18 +102,11 @@ module Conv #(
 
     ) mac_unit (
         .clk(clk), .reset(reset),
-        .init_acc(compute_finished), .input_vaild(input_loaded), .Q(Q),
+        .init_acc(), .input_vaild(input_loaded), .Q(Q),
         .input0(X_data), .input1(W_data), .init_value(B),
+
         .out(out)
     );
-
-    always_ff @(posedge clk) begin
-        if(reset)
-
-        else 
-
-
-    end 
 
     fifo_out #(
         .WIDTH(WIDTH), .DEPTH(DEPTH)
@@ -124,10 +115,10 @@ module Conv #(
         .IN_AXIS_TDATA(out),
         .IN_AXIS_TVALID(),
         .IN_AXIS_TREADY(),
-        .OUT_AXIS_TDATA(),
+        .OUT_AXIS_TDATA(OUTPUT_TREADY),
 
         .IN_AXIS_TREADY(INPUT_TREADY),
-        .OUT_AXIS_TDATA(OUTPUT_TDATA), 
+        .OUT_AXIS_TDATA(OUTPUT_TDATA), //check last valid for complete 
         .OUT_AXIS_TVALID(OUTPUT_TVALID)
     );
 
