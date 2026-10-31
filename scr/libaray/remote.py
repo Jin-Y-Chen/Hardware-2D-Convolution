@@ -46,6 +46,90 @@ def dc_shell():
     ])
 
 
+# vsim refuses to start when all three of these are unset.
+_LICENSE_KEYS = ("SALT_LICENSE_SERVER", "MGLS_LICENSE_FILE", "LM_LICENSE_FILE")
+
+
+def _license_ready():
+    return any(os.environ.get(key, "").strip() for key in _LICENSE_KEYS)
+
+
+# Read setenv/set lines. csh `set` is not visible to python after exec.
+def _license_from_file(path, seen):
+    if path in seen or not path.is_file():
+        return
+    seen.add(path)
+    try:
+        text = path.read_text(errors="replace")
+    except OSError:
+        return
+    for key in _LICENSE_KEYS:
+        if os.environ.get(key, "").strip():
+            continue
+        match = re.search(
+            r'(?:setenv\s+' + key + r'\s+|set\s+' + key + r'\s*=\s*)'
+            r'(?:"([^"]+)"|\'([^\']+)\'|(\S+))',
+            text,
+        )
+        if not match:
+            continue
+        value = next(part for part in match.groups() if part)
+        value = os.path.expanduser(os.path.expandvars(value)).strip()
+        if value and "$" not in value:
+            os.environ[key] = value
+    for match in re.finditer(r'^\s*source\s+(\S+)', text, re.M):
+        nested = match.group(1).strip('"').strip("'")
+        nested = os.path.expanduser(os.path.expandvars(nested))
+        _license_from_file(Path(nested), seen)
+
+
+# Source the course file in a csh that has a prompt. Some setups set the
+# license only in that branch, which `csh -c` skips.
+def _license_from_csh():
+    script = (
+        'set prompt="% "; '
+        'if (-f $HOME/ese507setup-csh) source $HOME/ese507setup-csh; '
+        'if (! $?MGLS_LICENSE_FILE && ! $?LM_LICENSE_FILE && ! $?SALT_LICENSE_SERVER) then; '
+        'if (-f /home/home4/pmilder/ese507/ese507setup-csh) '
+        'source /home/home4/pmilder/ese507/ese507setup-csh; '
+        'endif; '
+        'if ($?MGLS_LICENSE_FILE) echo __LIC_MGLS="$MGLS_LICENSE_FILE"; '
+        'if ($?LM_LICENSE_FILE) echo __LIC_LM="$LM_LICENSE_FILE"; '
+        'if ($?SALT_LICENSE_SERVER) echo __LIC_SALT="$SALT_LICENSE_SERVER"'
+    )
+    try:
+        out = subprocess.check_output(
+            ["csh", "-c", script], stderr=subprocess.DEVNULL, universal_newlines=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return
+    names = {
+        "__LIC_MGLS": "MGLS_LICENSE_FILE",
+        "__LIC_LM": "LM_LICENSE_FILE",
+        "__LIC_SALT": "SALT_LICENSE_SERVER",
+    }
+    for line in out.splitlines():
+        key, sep, value = line.partition("=")
+        if sep and key in names and value.strip():
+            os.environ[names[key]] = value.strip().strip('"')
+
+
+def ensure_questa_license():
+    if _license_ready():
+        return
+    seen = set()
+    for rel in ("ese507setup-csh", ".cshrc", ".tcshrc"):
+        _license_from_file(Path.home() / rel, seen)
+    _license_from_file(Path("/home/home4/pmilder/ese507/ese507setup-csh"), seen)
+    if not _license_ready():
+        _license_from_csh()
+    if not _license_ready():
+        sys.stderr.write(
+            "vsim: SALT_LICENSE_SERVER, MGLS_LICENSE_FILE, and LM_LICENSE_FILE "
+            "are unset after ~/ese507setup-csh.\n"
+        )
+
+
 # Run a tool, print its output, and save the same text to log. Returns the exit code.
 def stream(cmd, cwd, log):
     log.parent.mkdir(parents=True, exist_ok=True)
@@ -89,6 +173,7 @@ def op_vlog(args):
 # STAGE and INPUT_TVALID_PROB are sim.STAGE and sim.TVALID_PROB, not rtl/param.sv.
 def op_vsim(args):
     proj = project(args.proj)
+    ensure_questa_license()
     cmd = [questa("vsim"), "-64", "-c", "-work", str(proj / "work"), args.top,
            "-sv_seed", args.seed]
     if args.pipelined is not None:

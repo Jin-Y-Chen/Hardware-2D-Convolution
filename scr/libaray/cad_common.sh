@@ -165,14 +165,17 @@ filter_lab_noise() { grep -v 'cannot find name for group ID' || true; }
 
 # Run one scr/libaray/remote.py command on CAD after the course setup.
 # The script is piped to /tmp/ese507-remote.py; $@ becomes its arguments.
+# setenv after source: a csh `set` does not survive `exec python3`, and vsim
+# exits if SALT_LICENSE_SERVER, MGLS_LICENSE_FILE, and LM_LICENSE_FILE are empty.
 remote_py() {
-    local quoted="" a
+    local quoted="" a setup
     for a in "$@"; do
         quoted+=" \"${a//\"/}\""
     done
+    setup='if (! -f $HOME/ese507setup-csh) cp /home/home4/pmilder/ese507/ese507setup-csh $HOME/ese507setup-csh; source $HOME/ese507setup-csh; if ($?MGLS_LICENSE_FILE) setenv MGLS_LICENSE_FILE "$MGLS_LICENSE_FILE"; if ($?LM_LICENSE_FILE) setenv LM_LICENSE_FILE "$LM_LICENSE_FILE"; if ($?SALT_LICENSE_SERVER) setenv SALT_LICENSE_SERVER "$SALT_LICENSE_SERVER"; cat > /tmp/ese507-remote.py; exec python3 /tmp/ese507-remote.py'
     ssh -o ControlMaster=auto -o "ControlPath=${SSH_CTL}" -o ControlPersist=10m \
         "$REMOTE_USER@$REMOTE_HOST" \
-        "csh -c 'if (! -f \$HOME/ese507setup-csh) cp /home/home4/pmilder/ese507/ese507setup-csh \$HOME/; source \$HOME/ese507setup-csh; cat > /tmp/ese507-remote.py; exec python3 /tmp/ese507-remote.py$quoted'" \
+        "csh -c '${setup}${quoted}'" \
         < "$LIB_DIR/remote.py" \
         2> >(filter_lab_noise >&2)
 }
