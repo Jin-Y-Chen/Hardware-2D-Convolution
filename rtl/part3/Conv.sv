@@ -25,13 +25,13 @@ module Conv #(
     parameter C = param::C,
     parameter K = param::K,
     localparam X_ADDR_BITS = $clog2(R*C),
-    localparam X_COLUMN_BITS = $clog2(C),
-    localparam X_ROW_BITS = $clog2(R),
     localparam W_ADDR_BITS = $clog2(K*K),
     localparam W_COLUMN_BITS = $clog2(K),
+    localparma S_NEXT_ROW = S * C + (C - K)
+    localparma X_SIZE = R * C,
+    localparam W_SIZE = K * K,
     localparam MAXS = ((R > C) ? R : C) - K + 1,
     localparam S_BITS = $clog2(MAXS+1),
-    localparam INC_AMT_BITS = (X_COLUMN_BITS > S_BITS) ? X_COLUMN_BITS:S_BITS,
     localparam ACCW = $clog2(K*K*(128'd1 << (2*WIDTH-2)) + (1<<(WIDTH-1)))+1,
     localparam DEPTH = C - K + 1
 ) (
@@ -50,7 +50,7 @@ module Conv #(
     output OUTPUT_TVALID
 );
     //interconnects (input_mems -> mac_pipe)
-    logic input_loaded, compute_finished,
+    logic input_loaded, compute_finished, reset_w_addr, reset_x_addr
     logic [W_ADDR_BITS-1:0] W_read_addr
     logic [X_ADDR_BITS-1:0] X_read_addr, X_window_addr
     logic [S_BITS-1:0] S
@@ -63,16 +63,16 @@ module Conv #(
     counter #(
         .SIZE(W_ADDR_BITS)
     ) w_ptr(
-        .clk(clk), .reset(rest || rest_w_ptr), //reset assert before the next clk when W_read_addr is the last address in the K by K window
+        .clk(clk), .reset((reset || reset_w_addr) && input_loaded), //reset assert before the next clk when W_read_addr is the last address in the K by K window
         .inc_en((state == inc_X_col) || (state == inc_X_row)), 
         .count_val(W_read_addr), 
         .next_count(W_read_addr)
     );
 
     counter #(
-        .SIZE(X_ROW_BITS)
+        .SIZE(X_ADDR_BITS)
     ) x_ptr(
-        .clk(clk), .reset(reset || reset_x_ptr), //reset assert before the next clk when X_read_addr is the last address in the R by C matrix
+        .clk(clk), .reset((reset || reset_x_addr) && input_loaded), //reset assert before the next clk when X_read_addr is the last address in the R by C matrix
         .inc_en((state == inc_X_col)),
         .prev_count(X_read_addr), 
         .new_count(X_read_addr)
@@ -99,7 +99,7 @@ module Conv #(
         .WIDTH(WIDTH), .ACCW(ACCW)
     ) mac_unit (
         .clk(clk), .reset(reset),
-        .init_acc(), .input_vaild(input_loaded), .Q(Q),
+        .init_acc(init_acc), .input_vaild(input_loaded), .Q(Q),
         .input0(X_data), .input1(W_data), .init_value(B),
 
         .out(out)
@@ -119,8 +119,8 @@ module Conv #(
     );
 
     enum logic [0:0] {
-        inc_X_col,
-        inc_X_row } state, next_state;
+        inc_col,
+        inc_row } state, next_state;
 
     always_ff @(posedge clk) begin
         if (reset)
@@ -136,27 +136,40 @@ module Conv #(
     and additions.
     */
     always_ff @(posedge clk) begin 
-        if ()
+        if (reset || reset_x_addr)
+            next_window <= S;   
+            based_row <= 0;
+        else if ((state == inc_X_row) && reset_w_addr) // ff -> comb -> ff 
+            
+            if (next_window + S > base_row + (C - K))    //C is not adjust per row, C need to be a mulitple of Row
+                next_window <= next_window + (C - K)     // next row but does not stride to the apporiate row
+                based_row = next_window;
+            else 
+                next_window <= next_window + S;
             
     end 
 
     always_comb begin
-        rest_w_ptr = 0;
+        reset_w_addr = 0;
+        reset_x_addr = 0;
+        init_acc = 1;
         case (state)
-            inc_X_col : begin
+            inc_col : begin
+                init_acc = 0;
                 if (W_read_addr[W_COLUMN_BITS-1:0] == K-1) 
-                    next_state <= inc_X_row;
+                    next_state <= inc_row;
             end
-            inc_X_row : begin //both row of the window by additional C(column) and the next window by additional S(stride)
-                next_state <= inc_X_col;
-                if (X_read_addr[X_ADDR_BITS-1:0] == R*C-1)      //complete the last window's last row and column, need to account flooring
-                    rest_w_ptr = 1;
-                    rest_x_ptr = 1;
-                else if (W_read_addr[W_ADDR_BITS-1:0] == K*K-1) //complete the last row and the last column in the window, move to next window
-                    rest_w_ptr = 1;
-                    X_read_addr = nex_window;
+            inc_row : begin //both row of the window by additional C(column) and the next window by additional S(stride)
+                next_state <= inc_col;
+                if (X_read_addr[X_ADDR_BITS-1:0] == X_SIZE-1)      //complete the last window's last row, complete
+                    reset_w_addr = 1;
+                    reset_x_addr = 1;
+                else if (W_read_addr[W_ADDR_BITS-1:0] == W_SIZE-1) //complete the last row in the window, move to next window
+                    reset_w_addr = 1;
+                    X_read_addr = next_window;
                 else                                            //complete the last column in the window, move to next row
-                    X_read_addr = X_read_addr + (C - K + 1);
+                    init_acc = 0;
+                    X_read_addr = X_read_addr + (C - K);
             end
             default :
                 next_state <= inc_X_col;
