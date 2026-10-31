@@ -50,9 +50,9 @@ module Conv #(
     output OUTPUT_TVALID
 );
     //interconnects (input_mems -> mac_pipe)
-    logic input_loaded, compute_finished, valid_1, valid_2
+    logic input_loaded, compute_finished,
     logic [W_ADDR_BITS-1:0] W_read_addr
-    logic [X_ADDR_BITS-1:0] X_read_addr
+    logic [X_ADDR_BITS-1:0] X_read_addr, X_window_addr
     logic [S_BITS-1:0] S
     logic signed [WIDTH-1:0] B, X_data, W_data
     logic [6:0] Q
@@ -76,7 +76,7 @@ module Conv #(
     ) x_ptr(
         .clk(clk), .reset(reset || reset_x_ptr), //reset assert before the next clk when X_read_addr is the last address in the R by C matrix
         .inc_en((state == inc_X_col)),
-        .prev_count((state == inc_X_row) X_read_addr : inc_x_amt), 
+        .prev_count(X_read_addr), 
         .new_count(X_read_addr)
     );
 
@@ -137,7 +137,10 @@ module Conv #(
     computing all of Y requires RoutCoutK2 multiplications
     and additions.
     */
-    logic start_window_ptr; 
+    always_ff @(posedge clk) begin 
+        if ()
+            X_window <= X_window
+    end 
 
     always_comb begin
         rest_w_ptr = 0;
@@ -149,14 +152,13 @@ module Conv #(
             inc_X_row : begin //both row of the window by additional C(column) and the next window by additional S(stride)
                 next_state <= inc_X_col;
                 if (X_read_addr[X_ADDR_BITS-1:0] == R*C-1)      //complete the last window, need to account flooring
-                    complete_window = 1; 
                     rest_w_ptr = 1;
                     rest_x_ptr = 1;
-                else if (W_read_addr[W_ADDR_BITS-1:0] == K*K-1) //complete the last element in the window
-                    inc_x_amt = S;
+                else if (W_read_addr[W_ADDR_BITS-1:0] == K*K-1) //complete the last row and the last column in the window
+                    X_read_addr = X_window_addr + S;
                     rest_w_ptr = 1;
-                else 
-                    inc_x_amt = C-K;
+                else                                            //complete the last column in the window
+                    X_read_addr = X_read_addr + C - K;
             end
             default :
                 next_state <= inc_X_col;
