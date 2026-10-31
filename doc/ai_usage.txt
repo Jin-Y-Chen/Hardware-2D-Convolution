@@ -240,3 +240,20 @@ Date: 10/30
     Q: is this legal: assign a[63:32] = 0; assign a[31:0] = 1; as long as the index don't overlap the non-blocking assign of the same array is fine? 
 
     A: Legal, for statment example inside always_ff tool will warm but not reject
+
+Date: 10/31
+
+    Q: what are some traversal idea for a fixed window to stride through an undetermine X-matrix dimension. The next windows must fit within the x-matrix
+    after the window had shift by strided amount, thus some columns or rows is allow to be skip as the windows traverse through the x-matrix in row major order.
+    In other word, moving the window require seting a counter value (counter will increments each element in the window) to the corresponding address of input_mems
+    that stores the value. Striding the next window need to account if it will fit in the same column or have to skip to the next row and striding to the new row
+    will be multiple of the column size of the x-matrix by the stride. 
+    
+
+    A: The address of X[row][col] is row * C + col, where C is the matrix width. It is not row_ptr * column_ptr. 
+
+    Keep the address of the window's top-left and scan the K by K window from there. The next column is addr + 1. 
+    
+    The end of a window row is addr + (C - K + 1), which jumps from column c0+K-1 to the next row at column c0. W_read_addr is a separate counter that adds 1 for each of those K*K steps, then returns to 0.
+
+    The next window fits in this row when c0 + S <= C - K. Then the new top-left is origin + S. C - K is a constant. If it does not fit, the next row fits when r0 + S <= R - K. The new top-left is the current row base plus S*C, and the column origin returns to 0.

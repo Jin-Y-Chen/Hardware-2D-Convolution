@@ -61,8 +61,7 @@ module Conv #(
     logic signed [WIDTH-1:0] out
 
     counter #(
-        .SIZE(W_ADDR_BITS),
-        .INC_AMT_SIZE(INC_AMT_SIZE)
+        .SIZE(W_ADDR_BITS)
     ) w_ptr(
         .clk(clk), .reset(rest || rest_w_ptr), //reset assert before the next clk when W_read_addr is the last address in the K by K window
         .inc_en((state == inc_X_col) || (state == inc_X_row)), 
@@ -71,8 +70,7 @@ module Conv #(
     );
 
     counter #(
-        .SIZE(X_ROW_BITS),
-        .INC_AMT_SIZE(INC_AMT_SIZE)
+        .SIZE(X_ROW_BITS)
     ) x_ptr(
         .clk(clk), .reset(reset || reset_x_ptr), //reset assert before the next clk when X_read_addr is the last address in the R by C matrix
         .inc_en((state == inc_X_col)),
@@ -139,7 +137,7 @@ module Conv #(
     */
     always_ff @(posedge clk) begin 
         if ()
-            X_window <= X_window
+            
     end 
 
     always_comb begin
@@ -151,14 +149,14 @@ module Conv #(
             end
             inc_X_row : begin //both row of the window by additional C(column) and the next window by additional S(stride)
                 next_state <= inc_X_col;
-                if (X_read_addr[X_ADDR_BITS-1:0] == R*C-1)      //complete the last window, need to account flooring
+                if (X_read_addr[X_ADDR_BITS-1:0] == R*C-1)      //complete the last window's last row and column, need to account flooring
                     rest_w_ptr = 1;
                     rest_x_ptr = 1;
-                else if (W_read_addr[W_ADDR_BITS-1:0] == K*K-1) //complete the last row and the last column in the window
-                    X_read_addr = X_window_addr + S;
+                else if (W_read_addr[W_ADDR_BITS-1:0] == K*K-1) //complete the last row and the last column in the window, move to next window
                     rest_w_ptr = 1;
-                else                                            //complete the last column in the window
-                    X_read_addr = X_read_addr + C - K;
+                    X_read_addr = nex_window;
+                else                                            //complete the last column in the window, move to next row
+                    X_read_addr = X_read_addr + (C - K + 1);
             end
             default :
                 next_state <= inc_X_col;
@@ -190,36 +188,10 @@ the input_mems module to start reading in new inputs again, and the whole proces
 */
 
 
+    /*
 
-   /* since w-matrix is always a saqure matrix (K by K),
-    we need 2log(K) bit to address whole matrix, such that
-    more significant bits of log(K) bits address the row, 
-    and less significant bits of log(K) bits address the column.
-
-    similar fashsion with X-matrix (R by C), such that
-    log(R) + log(C) = log(RC)
-
-    then for the expression
-    accumulator_Reg = B
-    ...
-    accumulator_Reg += X[R*S+j][C*S+i] * W[j][i]
-
-
-    column_window = X[log(C)-1:0]
-    next_column_window = column + S
-    column_i = (next_column_window) + K[log(k)-1:1
-
-    *note S is only apply to column or row not both at the same time
-    such that if next_column_window > C then S should be apply to 
-    rows_Window instead and next_column_window = 0 again. 
-
-    row_window = X[log(RC)-1:log(C)]
-    next_row_window = row_window + S
-    row_j : (next_row_window) + K[log(KK)-1:log(K)]
-
-    X[r*S+1][c*S+j] = X[row_j concat column_i] (h, s), where h is 
-    just (j concat i) of length log(KK), which could just be a 
-    simple counter that iterated through the whole window of the 
+    X[r*S+1][c*S+j] = X[] (h, s), where h is 
+    just a simple counter that iterated through the whole window of the 
     K by K of W-matrix. The simple counter is also the logic 
     for address elements by W[j][i].
 
