@@ -157,11 +157,6 @@ module input_mems #(
         rst_addr = 0;
         inputs_loaded = 0;
 
-        if (reset) begin
-            next_state = input_W;
-            rst_addr = 1;
-        end 
-        else begin
         case (state)
             // take in W matrix data via its AXI-Stream input interface.
             input_W : begin

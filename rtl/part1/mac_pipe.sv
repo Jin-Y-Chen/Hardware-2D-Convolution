@@ -72,7 +72,7 @@ different behaviors at two different latencies.
 */
 module mac_pipe #(
     parameter WIDTH = param::WIDTH,
-    parameter ACCW  = param::ACCW
+    parameter ACCW  = param::ACCW,
     localparam signed [ACCW-1:0] MAXOUT = (1 <<< (WIDTH-1)) - 1,
     localparam signed [ACCW-1:0] MINOUT = -(1 <<< (WIDTH-1))
 )(
