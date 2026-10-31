@@ -266,17 +266,12 @@ Date: 10/31
             else 
                 next_window <= next_window + S;
 
-    A: The compare is valid only when next_window is the column origin c0. c0 + S > C - K means the next window does not fit in this row. C does not have to be a multiple of the row. Every row is C entries, so the flat address is already row * C + c0.
+    how to compare for any row that the next_window must move to the next row ?
 
-    Adding C - K does not reach the next strided row. From X[r][c0], the next top-left is X[r+S][0], which is S*C - c0 past the current address. C - K is only the last legal column origin, and only when S divides C - K. With C=13, K=7, S=3 the legal columns are 0, 3, 6. From 6 the next origin is address 39, a step of 33, not 6.
-
-    Same row: next_window <= next_window + S and c0 <= c0 + S. New row: c0 <= 0 and next_window <= next_window + row_step - c0. row_step is S*C, built once before the walk by adding C, S times. The window scan still uses + 1 and + (C - K + 1). Those are not this stride.
-
-    Q: how to compare for any row that the next_window must move to the next row ?
-
-    A: Keep row_base, the address of column 0 on the current window row. It starts at 0. The test on every row is next_window + S > row_base + (C - K). row_base + (C - K) is the last legal column of this row, so the limit moves with the row. C - K alone is that limit only while row_base is 0.
-
-    Same row: next_window <= next_window + S. New row: row_base <= row_base + row_step and next_window <= row_base + row_step, which places the origin at column 0. With C=13, K=7, S=3, row 0 uses 0, 3, 6 and 6 + 3 > 0 + 6. Row 3 has row_base 39, so the windows are 39, 42, 45 and 45 + 3 > 39 + 6.
+    A: Keep row_base, the address of column 0 on the current window row. It starts at 0. The test on every row is 
+    next_window + S > row_base + (C - K). 
+    
+    row_base + (C - K) is the last legal column of this row, so the limit moves with the row. 
 
     Q: here is the example for calculating next window with always comb:
 
