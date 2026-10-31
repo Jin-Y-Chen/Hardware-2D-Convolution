@@ -26,11 +26,10 @@ module counter #(
     output logic [SIZE-1:0] new_count
 );
     always_ff @(posedge clk) begin //same rising edge as the memory write
-        if (reset) begin
+        if (reset)
             new_count <= 0;
-        end
-        else if (inc_en)
-            new_count <= prev_count + 1;
+        else
+            new_count <= prev_count + inc_en;
     end 
 
 endmodule
@@ -195,9 +194,8 @@ module input_mems #(
             //Lets hope it does not go to this state...
             default : AXIS_TREADY = 0;
         endcase
-        end
     end
-
+    
 endmodule
 
 /* 

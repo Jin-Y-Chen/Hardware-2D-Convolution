@@ -1,5 +1,3 @@
-import param::*;
-
 module memory #(
     parameter WIDTH=16, SIZE=64,
     localparam LOGSIZE=$clog2(SIZE)
@@ -198,7 +196,7 @@ module input_mems #(
             default : AXIS_TREADY = 0;
         endcase
     end
-
+    
 endmodule
 
 /* 

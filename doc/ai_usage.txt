@@ -296,6 +296,16 @@ Date: 10/31
 
     lets say next_window <= S on reset and does not change until state == next_window, will X_read_addr = S or 2S. 
 
-    A: X_read_addr is S on the clock that enters state next_window. always_comb reads the register before the nonblocking update, so next_window + S is scheduled as 2S and is visible only on the following clock. new_window is also 0 at that edge, because it still follows the previous state. It becomes 1 after state updates.
+    A: X_read_addr is S on the clock that enters state next_window. always_comb reads the register before the 
+    nonblocking update, so next_window + S is scheduled as 2S and is visible only on the following clock. 
+    new_window is also 0 at that edge, because it still follows the previous state. It becomes 1 after state updates.
 
-    The semicolon after the else if makes next_window <= next_window + S run on every clock that is not reset, and new_window = 1 assigns instead of compares. With that semicolon, next_window does not stay at S until the state matches.
+    The semicolon after the else if makes next_window <= next_window + S run on every clock that is not reset, 
+    and new_window = 1 assigns instead of compares. With that semicolon, next_window does not stay at S until 
+    the state matches.
+
+    Q: How do you do the floor operation in localparam in verliog?
+
+    A: Integer division in a localparam already rounds down to the nearest integer when both sides are non-negative. (R - K) / S drops the fraction, so localparam ROUT = (R - K) / S + 1 is the floor 
+
+    Q: 

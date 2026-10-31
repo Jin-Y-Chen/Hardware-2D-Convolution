@@ -2,7 +2,7 @@
 package param;
     localparam int WIDTH = 10;  // input / output bits
     localparam int ACCW  = 24;  // accumulator bits
-    localparam int PIPELINED = 1;  // testbench: 0 = mac, 1 = mac_pipe
+    localparam int PIPELINED = 0;  // testbench: 0 = mac, 1 = mac_pipe
 
     localparam int R = 15;  // rows in X
     localparam int C = 13;  // cols in X

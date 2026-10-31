@@ -1,23 +1,4 @@
 import param::*;
-import mac_pipe::*;
-import input_mems::*;
-import fifo_out::*;
-
-module counter #(
-    parameter SIZE = 32,
-) (
-    input clk, reset, inc_en
-    input [SIZE-1 : 0] count_val,
-    output logic [SIZE-1:0] next_count
-);
-    always_ff @(posedge clk) begin //same rising edge as the memory write
-        if (reset)
-            next_count <= 0;
-        else
-            next_count <= count_val + inc_en;
-    end 
-
-endmodule
 
 module Conv #(
     parameter WIDTH = param::WIDTH,
@@ -27,9 +8,21 @@ module Conv #(
     localparam X_ADDR_BITS = $clog2(R*C),
     localparam W_ADDR_BITS = $clog2(K*K),
     localparam W_COLUMN_BITS = $clog2(K),
-    localparma S_NEXT_ROW = S * C + (C - K)
-    localparma X_SIZE = R * C,
-    localparam W_SIZE = K * K,
+    //localparma ROUT = ((R - K)/S) + 1,
+    //localparma COUT = ((C - K)/S) + 1,
+    //localparma X_SIZE = ROUT * COUT,
+    localparma W_SIZE = K * K,
+    //localparma S_NEXT_ROW = C*S - COUT,
+
+    /*rounds down to the next integer.
+        Rout = [(R - K)/ S ] + 1
+        Cout = [(C - K)/ S] + 1
+    computing all of Y requires RoutCoutK2 multiplications
+    and additions.
+
+    C - Cout = the addition amount to the next row
+    C*S - Cout = the addition amount to the next row by stride amount
+    */
     localparam MAXS = ((R > C) ? R : C) - K + 1,
     localparam S_BITS = $clog2(MAXS+1),
     localparam ACCW = $clog2(K*K*(128'd1 << (2*WIDTH-2)) + (1<<(WIDTH-1)))+1,
@@ -37,25 +30,22 @@ module Conv #(
 ) (
     input clk, reset,
     //AXI-stream input
-    input [WIDTH-1:0] AXIS_TDATA,
-    input AXIS_TVALID,
-    input [S_BITS+7:0] AXIS_TUSER,
-    output INPUT_TREADY,
-    output INPUT_TREADY,
+    input [WIDTH-1:0] IN_AXIS_TDATA,
+    input IN_XIS_TVALID,
+    output logic IN_INPUT_TREADY,
 
     //FIFO-queue output
-    input OUTPUT_TREADY,
-    input OUTPUT_TREADY,
-    output [WIDTH-1:0] OUTPUT_TDATA,
-    output OUTPUT_TVALID
+    input OUT_AXIS_TREADY,
+    output [WIDTH-1:0] OUT_AXIS_TDATA,
+    output OUT_AXIS_TVALID
 );
     //interconnects (input_mems -> mac_pipe)
-    logic input_loaded, compute_finished, reset_w_addr, reset_x_addr
+    logic input_loaded, compute_finished, reset_W_addr, reset_X_addr, init_acc, valid, ready
     logic [W_ADDR_BITS-1:0] W_read_addr
     logic [X_ADDR_BITS-1:0] X_read_addr, X_window_addr
     logic [S_BITS-1:0] S
     logic signed [WIDTH-1:0] B, X_data, W_data
-    logic [6:0] Q
+    logic [6:0] Q,
 
     //interconnects (mac_pipe -> FIFO_out)
     logic signed [WIDTH-1:0] out
@@ -63,17 +53,17 @@ module Conv #(
     counter #(
         .SIZE(W_ADDR_BITS)
     ) w_ptr(
-        .clk(clk), .reset((reset || reset_w_addr) && input_loaded), //reset assert before the next clk when W_read_addr is the last address in the K by K window
-        .inc_en((state == inc_X_col) || (state == inc_X_row)), 
-        .count_val(W_read_addr), 
-        .next_count(W_read_addr)
+        .clk(clk), .reset((reset || reset_W_addr) && !input_loaded), //reset assert before the next clk when W_read_addr is the last address in the K by K window
+        .inc_en((state == inc_X_col) || (state == inc_X_row) && ready), 
+        .prev_count(W_read_addr), 
+        .new_count(W_read_addr)
     );
 
     counter #(
         .SIZE(X_ADDR_BITS)
     ) x_ptr(
-        .clk(clk), .reset((reset || reset_x_addr) && input_loaded), //reset assert before the next clk when X_read_addr is the last address in the R by C matrix
-        .inc_en((state == inc_X_col)),
+        .clk(clk), .reset((reset || reset_X_addr) && !input_loaded), //reset assert before the next clk when X_read_addr is the last address in the R by C matrix
+        .inc_en((state == inc_X_col) && ready),
         .prev_count(X_read_addr), 
         .new_count(X_read_addr)
     );
@@ -94,6 +84,10 @@ module Conv #(
         .X_read_addr(X_read_addr), .X_data(X_data),
         .W_read_addr(W_read_addr), .W_data(W_data)
     );
+
+    always_ff @(posedge clk) begin
+        valid_pre_acc <= valid;
+    begin
     
     mac_pipe #(
         .WIDTH(WIDTH), .ACCW(ACCW)
@@ -105,17 +99,21 @@ module Conv #(
         .out(out)
     );
 
+    always_ff @(posedge clk) begin
+        valid_acc_pos <= valid_pre_acc;
+    begin
+
     fifo_out #(
         .WIDTH(WIDTH), .DEPTH(DEPTH)
     ) axis_out(
         .clk(clk), .reset(reset),
         .IN_AXIS_TDATA(out),
-        .IN_AXIS_TVALID(),  //input pipelined valid signal
-        .IN_AXIS_TREADY(),  //out check last valid for complete 
+        .IN_AXIS_TVALID(valid_acc_pos),  //input pipelined valid signal
+        .IN_AXIS_TREADY(ready),
 
-        .IN_AXIS_TREADY(INPUT_TREADY),
         .OUT_AXIS_TDATA(OUTPUT_TDATA), 
         .OUT_AXIS_TVALID(OUTPUT_TVALID)
+        .OUT_AXIS_TREADY(OUT_AXIS_TREADY)
     );
 
     enum logic [0:0] {
@@ -129,49 +127,48 @@ module Conv #(
             state <= next_state;
     end
 
-    /*rounds down to the next integer.
-        Rout = [(R - K)/ S ] + 1
-        Cout = [(C - K)/ S] + 1
-    computing all of Y requires RoutCoutK2 multiplications
-    and additions.
-    */
     always_ff @(posedge clk) begin 
-        if (reset || reset_x_addr)
+        if (reset || reset_X_addr)
             next_window <= S;   
             based_row <= 0;
-        else if ((state == inc_X_row) && reset_w_addr) // ff -> comb -> ff 
+        else if ((state == inc_X_row) && reset_W_addr) // ff -> comb -> ff 
             
-            if (next_window + S > base_row + (C - K))    //C is not adjust per row, C need to be a mulitple of Row
-                next_window <= next_window + (C - K)     // next row but does not stride to the apporiate row
+            if (next_window + S > base_row + (C - K)) begin    //C is adjust per row, base_row is the refered mulitpal of Row
+                next_window <= next_window + ??;    // next row, stride to the apporiate row
                 based_row = next_window;
+            end 
             else 
                 next_window <= next_window + S;
-            
     end 
 
     always_comb begin
-        reset_w_addr = 0;
-        reset_x_addr = 0;
+        reset_W_addr = 0;
+        reset_X_addr = 0;
         init_acc = 1;
+        valid = 0;
         case (state)
             inc_col : begin
+                valid = 1;
                 init_acc = 0;
                 if (W_read_addr[W_COLUMN_BITS-1:0] == K-1) 
                     next_state <= inc_row;
             end
             inc_row : begin //both row of the window by additional C(column) and the next window by additional S(stride)
+                valid = 1;
                 next_state <= inc_col;
                 if (X_read_addr[X_ADDR_BITS-1:0] == X_SIZE-1)      //complete the last window's last row, complete
-                    reset_w_addr = 1;
-                    reset_x_addr = 1;
+                    reset_W_addr = 1;
+                    reset_X_addr = 1;
+                    compute_finished = 1; 
                 else if (W_read_addr[W_ADDR_BITS-1:0] == W_SIZE-1) //complete the last row in the window, move to next window
-                    reset_w_addr = 1;
+                    reset_W_addr = 1;
                     X_read_addr = next_window;
                 else                                            //complete the last column in the window, move to next row
                     init_acc = 0;
-                    X_read_addr = X_read_addr + (C - K);
+                    X_read_addr = X_read_addr + (C - K) + 1;
             end
             default :
+                valid = 0;
                 next_state <= inc_X_col;
         endcase 
     end 
