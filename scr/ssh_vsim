@@ -14,7 +14,7 @@ vsim [TOP] [DUT]
   [TOP] is the testbench. [DUT] is the design.
   When [DUT] is input_mems, WIDTH, R, C, and K come from rtl/param.sv.
   TVALID_PROB and STAGE come from sim in constraint/all_config.json.
-  When [DUT] is Conv, vlog also compiles rtl/part3 input_mems, mac_pipe, and fifo_out.
+  Files for [TOP] are the matching line in scr/libaray/src_path.
   TVALID_PROB and TREADY_PROB come from sim in constraint/all_config.json.
 
   -h, --help     this text
@@ -40,11 +40,6 @@ done
 apply_config
 [[ "$SEED_SET" -eq 0 ]] && SEED="$CFG_SEED"
 [[ -n "$TOP" && -n "$DUT" ]] || { usage >&2; exit 2; }
-TB_FILE="$(locate_src "$TOP")"
-DUT_FILE="$(locate_src "$DUT")"
-# vsim loads a module name. input_mems_tb.sv is library "input_mems_tb", design "sv".
-TOP="$(basename "$TB_FILE" .sv)"
-DUT="$(basename "$DUT_FILE" .sv)"
 # mac is the combinational DUT (PIPELINED 0); mac_pipe is the pipelined one (PIPELINED 1).
 # input_mems reads rtl/param.sv for WIDTH, R, C, K.
 # sim.TVALID_PROB and sim.STAGE override the testbench parameters.
@@ -67,17 +62,9 @@ case "$DUT" in
         ;;
 esac
 
-files=("$DUT_FILE" "$TB_FILE")
-for part in part1 part2 part3 part4; do
-    [[ -f "$LOCAL_TB/$part/${TOP}.c" ]] && files+=("tb/$part/${TOP}.c")
-done
-# Conv_tb calls calcOutput in test_helper.c.
-if [[ "$TOP" == Conv_tb ]]; then
-    for part in part3 part4; do
-        [[ -f "$LOCAL_TB/$part/test_helper.c" ]] && files+=("tb/$part/test_helper.c")
-    done
-fi
-cad_vlog "${files[@]}"   # same compile as vlog, then simulate
+cad_vlog "$TOP"   # src_path line for $TOP, then xrun
+# shellcheck disable=SC2086
+vsim_args+=("${INCDIR_ARGS[@]}" $FILE_LIST)
 
 if [[ "$DUT" == input_mems ]]; then
     echo "vsim  $TOP  $DUT  seed=$SEED  WIDTH=$P_WIDTH R=$P_R C=$P_C K=$P_K TVALID_PROB=$P_TVPR STAGE=$P_STAGE"

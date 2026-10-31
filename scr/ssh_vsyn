@@ -46,13 +46,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$TOP" ]] || { usage >&2; exit 2; }
-DUT_FILE="$(locate_src "$TOP")"
-TOP="$(basename "$DUT_FILE" .sv)"
 [[ -n "$CLK_NAME" ]]   && set_json syn clk "$CLK_NAME"
 [[ -n "$RST_NAME" ]]   && set_json syn rst "$RST_NAME"
 [[ -n "$CLK_PERIOD" ]] && set_json syn period_ns "$CLK_PERIOD"
 
-cad_vlog "$DUT_FILE"   # same compile as vlog, then runsynth.tcl on CAD
+cad_vlog "$TOP"   # sources_for "$TOP", then runsynth.tcl on CAD
 # shellcheck disable=SC2086
 remote_py runsynth --proj "$REMOTE_PROJECT_REL" \
     --top "$TOP" --clk "$CFG_CLK" --rst "$CFG_RST" --period "$CFG_PERIOD" \

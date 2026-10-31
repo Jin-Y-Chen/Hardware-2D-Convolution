@@ -3,7 +3,7 @@
   "design": {
     "WIDTH": 10,
     "ACCW": 24,
-    "PIPELINED": 1,
+    "PIPELINED": 0,
     "R": 15,
     "C": 13,
     "K": 7

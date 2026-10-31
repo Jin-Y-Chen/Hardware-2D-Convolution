@@ -1,3 +1,5 @@
+import param::*;
+
 module pre_accum_ff #(
     parameter WIDTH = param::WIDTH,
     parameter ACCW  = param::ACCW

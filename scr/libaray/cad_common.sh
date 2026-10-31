@@ -14,7 +14,6 @@ REMOTE_LOG_REL="ese507/project/log"
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$LIB_DIR/../.." && pwd)"
 LOCAL_RTL="$PROJECT_ROOT/rtl"
-LOCAL_TB="$PROJECT_ROOT/tb"
 LOCAL_CONSTRAINT="$PROJECT_ROOT/constraint"
 LOCAL_LOG="$PROJECT_ROOT/log"
 ALL_CONFIG="$LOCAL_CONSTRAINT/all_config.json"
@@ -27,7 +26,7 @@ require_rsync() {
     exit 1
 }
 
-require_rsync "$@"
+require_rsync
 
 # Write rtl/param.sv from constraint/all_config.json.
 # Sets P_WIDTH P_ACCW P_PIPE CFG_SEED CFG_CLK CFG_RST CFG_PERIOD
@@ -164,7 +163,7 @@ RSYNC_RSH="ssh -o ControlMaster=auto -o ControlPath=${SSH_CTL} -o ControlPersist
 filter_lab_noise() { grep -v 'cannot find name for group ID' || true; }
 
 # Run one scr/libaray/remote.py command on CAD after the course setup.
-# The script is piped to /tmp/ese507-remote.py; $@ becomes its arguments.
+# One line: the lab login shell is csh, and a newline inside the quotes is an error.
 remote_py() {
     local quoted="" a
     for a in "$@"; do
@@ -215,7 +214,7 @@ RSYNC_TOOL_EXCLUDES=(
     --exclude '*.do'
 )
 
-# Sync one project folder (rtl, tb, or log) with CAD. sim/ and syn/ stay on CAD.
+# Sync one project folder (rtl, tb, sim, syn, or log) with CAD.
 rsync_project_ssh() {
     local name="$1"
     shift
@@ -226,72 +225,56 @@ rsync_project_ssh() {
         2> >(filter_lab_noise >&2)
 }
 
-# Map a short name or path (mac, mac_tb, rtl/part1/mac.sv) to a project-relative path.
-locate_src() {
-    local raw="${1#./}" base="${1#./}"
-    base="${base%.sv}"
-    base="${base%.c}"
-    if [[ "$base" != */* ]]; then
-        if [[ -f "$LOCAL_RTL/part1/${base}.sv" ]]; then echo "rtl/part1/${base}.sv"; return; fi
-        if [[ -f "$LOCAL_RTL/part2/${base}.sv" ]]; then echo "rtl/part2/${base}.sv"; return; fi
-        if [[ -f "$LOCAL_RTL/part3/${base}.sv" ]]; then echo "rtl/part3/${base}.sv"; return; fi
-        if [[ -f "$LOCAL_TB/part1/${base}.sv" ]]; then echo "tb/part1/${base}.sv"; return; fi
-        if [[ -f "$LOCAL_TB/part2/${base}.sv" ]]; then echo "tb/part2/${base}.sv"; return; fi
-        if [[ -f "$LOCAL_TB/part3/${base}.sv" ]]; then echo "tb/part3/${base}.sv"; return; fi
-        if [[ -f "$LOCAL_TB/part4/${base}.sv" ]]; then echo "tb/part4/${base}.sv"; return; fi
-        if [[ -f "$LOCAL_TB/part1/${base}.c" ]]; then echo "tb/part1/${base}.c"; return; fi
-        if [[ -f "$LOCAL_TB/part3/${base}.c" ]]; then echo "tb/part3/${base}.c"; return; fi
-        if [[ -f "$LOCAL_TB/part4/${base}.c" ]]; then echo "tb/part4/${base}.c"; return; fi
-    fi
-    [[ -f "$PROJECT_ROOT/$raw" ]] && { echo "$raw"; return; }
-    echo "Not found: $1. Pass [DUT] or [TOP], or a path under rtl/ or tb/." >&2
-    return 1
+# Remaining fields of one key in scr/libaray/src_path.
+src_row() {
+    local fields
+    fields=$(awk -v name="$1" '
+        { sub(/\r$/, "") }
+        /^[[:space:]]*(#|$)/ { next }
+        $1 == name { $1 = ""; sub(/^[[:space:]]+/, ""); print; found = 1; exit }
+        END { if (!found) exit 1 }
+    ' "$LIB_DIR/src_path") || {
+        echo "No '$1' line in scr/libaray/src_path." >&2
+        return 1
+    }
+    echo "$fields"
 }
 
-# Write params.sv on CAD for part 2 and part 3. Both testbenches `include "params.sv".
-# The host does not keep a sim/ folder for this.
+# Write the params line from src_path. Both testbenches `include "params.sv".
 write_remote_params() {
+    local dests
+    dests="$(src_row params)" || return 1
+    # shellcheck disable=SC2086
     remote_py params --proj "$REMOTE_PROJECT_REL" \
         --width "$P_WIDTH" --rows "$P_R" --cols "$P_C" --k "$P_K" \
-        --tvpr "$P_TVPR" --trpr "$P_TRPR" --stage "$P_STAGE"
+        --tvpr "$P_TVPR" --trpr "$P_TRPR" --stage "$P_STAGE" \
+        $dests
 }
 
-# Conv needs the rest of rtl/part3, not only Conv.sv.
-add_src() {
-    local f
-    for f in "${files[@]}"; do
-        [[ "$f" == "$1" ]] && return 0
-    done
-    files+=("$1")
-}
-
-# Compile on CAD. Does not sync the project tree (that is link).
-# Uploads the generated rtl/param.sv and writes params.sv on CAD.
-# Conv also compiles rtl/part3/input_mems.sv, mac_pipe.sv, and fifo_out.sv.
-# Other sources must already be on CAD.
+# Compile the src_path list for one top-level name. Does not sync the tree (that is link).
+# Uploads rtl/param.sv and writes the params line from src_path. Other sources must already be on CAD.
 cad_vlog() {
     apply_config
-    local -a files=(rtl/param.sv)
-    local f loc
-    for f in "$@"; do
-        [[ "$f" == rtl/param.sv ]] && continue
-        loc="$(locate_src "$f")"
-        if [[ "$loc" == rtl/part3/Conv.sv ]]; then
-            add_src rtl/part3/input_mems.sv
-            add_src rtl/part3/mac_pipe.sv
-            add_src rtl/part3/fifo_out.sv
-            add_src rtl/part3/Conv.sv
-        else
-            add_src "$loc"
-        fi
+    local name="$1" list f d
+    list="$(src_row "$name")" || return 1
+    # shellcheck disable=SC2206
+    local -a files=( $list )
+    local -a inc=()
+    for f in "${files[@]}"; do
+        [[ -f "$PROJECT_ROOT/$f" ]] || { echo "Missing $f (listed for $name in scr/libaray/src_path)." >&2; return 1; }
     done
-    FILE_LIST="${files[*]}"   # vsyn reads this when it writes SRC_FILE on CAD
+    list="$(src_row incdir)" || return 1
+    for d in $list; do
+        inc+=(--incdir "$d")
+    done
+    FILE_LIST="${files[*]}"   # vsim and vsyn pass this list on
+    INCDIR_ARGS=("${inc[@]}") # vsim passes the same include dirs
     remote_dirs rtl
     rsync_to_remote "$PARAM_PKG" "~/$REMOTE_PROJECT_REL/rtl/param.sv"
     write_remote_params
     echo "vlog  ${FILE_LIST}"
     set +e
-    remote_py vlog --proj "$REMOTE_PROJECT_REL" "${files[@]}"
+    remote_py vlog --proj "$REMOTE_PROJECT_REL" "${inc[@]}" "${files[@]}"
     local rc=$?
     set -e
     mkdir -p "$LOCAL_LOG"

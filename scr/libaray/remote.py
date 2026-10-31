@@ -46,6 +46,14 @@ def dc_shell():
     ])
 
 
+def _csh_quote(text):
+    escaped = (
+        text.replace("\\", "\\\\").replace('"', '\\"')
+        .replace("$", "\\$").replace("`", "\\`").replace("!", "\\!")
+    )
+    return '"' + escaped + '"'
+
+
 # Run a tool, print its output, and save the same text to log. Returns the exit code.
 def stream(cmd, cwd, log):
     log.parent.mkdir(parents=True, exist_ok=True)
@@ -67,38 +75,41 @@ def op_dirs(args):
         (root / rel).mkdir(parents=True, exist_ok=True)
 
 
-# Rebuild work/ and compile rtl/param.sv, then the other files.
+# Rebuild work/ and compile the file list from scr/libaray/src_path.
 def op_vlog(args):
     proj = project(args.proj)
     work = proj / "work"
     shutil.rmtree(work, ignore_errors=True)
     subprocess.run([questa("vlib"), "work"], cwd=proj, check=False)
-    files = ["rtl/param.sv"] + [f for f in args.files if f != "rtl/param.sv"]
-    sys.exit(stream(
-        [questa("vlog"), "-64", "-sv", "+acc",
-         "+incdir+tb/part1", "+incdir+tb/part2", "+incdir+tb/part3", "+incdir+tb/part4",
-         "+incdir+sim/part2", "+incdir+sim/part3",
-         "+incdir+rtl", "+incdir+rtl/part1", "+incdir+rtl/part2", "+incdir+rtl/part3",
-         *files],
-        proj, proj / "log" / "vlog.log",
-    ))
+    cmd = [questa("vlog"), "-64", "-sv", "+acc"]
+    for inc in args.incdir:
+        cmd.append("+incdir+" + inc)
+    cmd.extend(args.files)
+    sys.exit(stream(cmd, proj, proj / "log" / "vlog.log"))
 
 
-# Run the testbench in the console (vsim -c).
-# -GPIPELINED is only for the MAC testbench.
-# STAGE and INPUT_TVALID_PROB are sim.STAGE and sim.TVALID_PROB, not rtl/param.sv.
+# xrun compiles and runs. -64bit is Questa -64, -access +r is +acc.
+# A prompt is set first so the course setup exports the Xcelium license.
+# Include dirs and source files are the incdir and design lines in src_path.
 def op_vsim(args):
     proj = project(args.proj)
-    cmd = [questa("vsim"), "-64", "-c", "-work", str(proj / "work"), args.top,
-           "-sv_seed", args.seed]
+    cmd = ["xrun", "-64bit", "-access", "+r", "-clean", "-top", args.top, "-svseed", args.seed]
+    for inc in args.incdir:
+        cmd.extend(["-incdir", inc])
     if args.pipelined is not None:
-        cmd.append("-GPIPELINED=%s" % args.pipelined)
+        cmd.extend(["-defparam", "%s.PIPELINED=%s" % (args.top, args.pipelined)])
     if args.stage is not None:
-        cmd.append("-GSTAGE=%s" % args.stage)
+        cmd.extend(["-defparam", "%s.STAGE=%s" % (args.top, args.stage)])
     if args.tvalid is not None:
-        cmd.append("-GINPUT_TVALID_PROB=%s" % args.tvalid)
-    cmd.extend(["-do", "run -all; quit"])
-    sys.exit(stream(cmd, proj, proj / "log" / "vsim.log"))
+        cmd.extend(["-defparam", "%s.INPUT_TVALID_PROB=%s" % (args.top, args.tvalid)])
+    cmd.extend(args.files)
+    script = Path("/tmp/ese507-vsim.csh")
+    script.write_text(
+        'set prompt = "% "\n'
+        "if (-f $HOME/ese507setup-csh) source $HOME/ese507setup-csh\n"
+        "exec " + " ".join(_csh_quote(arg) for arg in cmd) + "\n"
+    )
+    sys.exit(stream(["csh", str(script)], proj, proj / "log" / "vsim.log"))
 
 
 # Write params.sv for part 2 and part 3. Both testbenches include that file.
@@ -116,7 +127,7 @@ def op_params(args):
         "`define STAGEVAL %s\n"   # sim.STAGE
         % (args.width, args.rows, args.cols, args.k, args.tvpr, args.trpr, args.stage)
     )
-    for rel in ("sim/part2/params.sv", "sim/part3/params.sv"):
+    for rel in args.dests:
         path = proj / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
@@ -135,7 +146,7 @@ def rtl_rel(path):
 def op_runsynth(args):
     tcl = project(args.proj) / "syn" / "runsynth.tcl"
     if not tcl.is_file():
-        sys.exit("syn/runsynth.tcl is not on CAD. link does not copy syn/.")
+        sys.exit("syn/runsynth.tcl is not on CAD. Run link.")
     files = [rtl_rel(path) for path in args.files]
     src = '"%s"' % files[0] if len(files) == 1 else "[list " + " ".join('"%s"' % path for path in files) + "]"
     text = tcl.read_text(encoding="utf-8")
@@ -158,7 +169,7 @@ def op_vsyn(args):
     proj = project(args.proj)
     syn = proj / "syn"
     if not (syn / "setupdc.tcl").is_file():
-        sys.exit("syn/setupdc.tcl is missing on CAD. link does not copy syn/.")
+        sys.exit("syn/setupdc.tcl is missing on CAD. Run link.")
     sys.exit(stream([dc_shell(), "-f", "runsynth.tcl"], syn, proj / "log" / "vsyn.log"))
 
 
@@ -196,10 +207,12 @@ def parser():
     params.add_argument("--tvpr", required=True)
     params.add_argument("--trpr", required=True)
     params.add_argument("--stage", required=True)
+    params.add_argument("dests", nargs="+")
     params.set_defaults(func=op_params)
 
     vlog = sub.add_parser("vlog")
     vlog.add_argument("--proj", required=True)
+    vlog.add_argument("--incdir", action="append", default=[])
     vlog.add_argument("files", nargs="*")
     vlog.set_defaults(func=op_vlog)
 
@@ -210,6 +223,8 @@ def parser():
     vsim.add_argument("--pipelined")
     vsim.add_argument("--stage")
     vsim.add_argument("--tvalid")
+    vsim.add_argument("--incdir", action="append", default=[])
+    vsim.add_argument("files", nargs="*")
     vsim.set_defaults(func=op_vsim)
 
     runsynth = sub.add_parser("runsynth")

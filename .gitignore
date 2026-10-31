@@ -10,3 +10,7 @@
 *.snm
 *.vrb
 svg-inkscape/
+
+# Local simulation and synthesis trees
+sim/
+syn/

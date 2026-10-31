@@ -47,7 +47,7 @@ scr/
     └── plot.py
 ```
 
-`link` syncs `rtl/` and `tb/` only, then overwrites `log/`. `sim/` and `syn/` stay on CAD, so this machine does not need those folders. `vlog` compiles on CAD, uploads `rtl/param.sv`, and writes `sim/part2/params.sv` and `sim/part3/params.sv` there. `vsim` and `vsyn` compile with that same step. `vsyn` then fills `syn/runsynth.tcl` on CAD and runs it. Tool output is printed in the console and saved under `log/`.
+`link` syncs `rtl/`, `tb/`, `sim/`, and `syn/`, then overwrites `log/`. `vlog` compiles on CAD, uploads `rtl/param.sv`, and writes `sim/part2/params.sv` and `sim/part3/params.sv` there. `vsim` and `vsyn` compile with that same step. `vsyn` then fills `syn/runsynth.tcl` on CAD and runs it. Tool output is printed in the console and saved under `log/`.
 
 `PIPELINED` is `0` for `mac` and `1` for `mac_pipe`. A wrong mix prints `Set design.PIPELINED to 0 in constraint/all_config.json for mac.` A bad `vlog`, `vsim`, or `vsyn` command prints that command's help.
 

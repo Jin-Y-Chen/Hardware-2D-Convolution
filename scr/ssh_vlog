@@ -10,7 +10,7 @@ usage() {
 vlog [DUT]
 
   Run link first. vlog does not sync rtl/ or tb/.
-  [DUT] is a module name or a source path. rtl/param.sv is compiled first.
+  [DUT] is a name in scr/libaray/src_path.
 
   -h, --help    this text
 EOF
