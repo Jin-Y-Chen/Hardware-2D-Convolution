@@ -273,6 +273,12 @@ Date: 10/31
     
     row_base + (C - K) is the last legal column of this row, so the limit moves with the row. 
 
+    Q: Without multiplication of S how do get the next row based on the Stride value at run time
+
+    A: Add C, S times. C is the constant row length, so each add moves one image row down, and S adds move S rows down. That sum is S*C with no multiply.
+
+    row_base starts at 0. When the next window does not fit in this row, add C to row_base once per clock and count until the count equals S. next_window then becomes that new row_base, which is column 0 of the row S image rows below. Adding C - K only steps inside the current window. It does not stride to the next row.
+
     Q: here is the example for calculating next window with always comb:
 
     alwasy_ff(posedge clk) begin
@@ -306,6 +312,28 @@ Date: 10/31
 
     Q: How do you do the floor operation in localparam in verliog?
 
-    A: Integer division in a localparam already rounds down to the nearest integer when both sides are non-negative. (R - K) / S drops the fraction, so localparam ROUT = (R - K) / S + 1 is the floor 
+    A: Integer division in a localparam already rounds down to the nearest integer when both sides are non-negative. 
+    (R - K) / S drops the fraction, so localparam ROUT = (R - K) / S + 1 is the floor 
 
-    Q: 
+    Q: This is the same complexity as if I just do S * C?
+
+    always_comb begin 
+        i = 0;
+        stride_column_amt = 0;
+        while (i < S_BITS) 
+            stride_column_amt += (S[i:i]) C << i ? 0
+    end;
+
+    A: Yes. Each bit of S adds a shifted copy of C: bit 0 adds C, bit 1 adds C<<1, bit 2 adds C<<2. That sum is S*C. 
+    A combinational while does not run S times at runtime. Synthesis unrolls it into S_BITS adders in one cycle, the 
+    same circuit as based_row + S*C.
+
+    Adding C once per clock, S times, is the smaller circuit. It uses one adder and takes S cycles.
+
+    Q: Add C per cycle wouldn't work if if S >  K^2 * (C - K)/S, taking more cycle to add the next row. Whats a better alternative?
+
+    A: Use one cycle of S*C. C is constant, so S*C is a constant multiply, and next_window <= based_row + S*C is ready on the clock that leaves the row.
+
+    Adding C once per clock needs S cycles, and those cycles have to fit inside the current row. A row is about Cout*K^2 cycles, with Cout = (C - K)/S + 1.
+     The product K^2 * (C - K)/S drops that extra window, so the real limit is S > Cout*K^2. Large S makes Cout smaller, which is when the S adds no longer 
+     hide behind the row. S*C does not depend on that limit.
