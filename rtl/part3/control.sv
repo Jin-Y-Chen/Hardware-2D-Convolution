@@ -6,6 +6,8 @@ module control #(
     parameter C = 16,
     parameter K = 3,
     localparam X_ADDR_BITS = $clog2(R*C),
+    localparam R_BITS = $clog2(R),
+    localparam C_BITS = $clog2(C),
     localparam W_ADDR_BITS = $clog2(K*K),
     localparam MAXS = ((R > C) ? R : C) - K + 1,
     localparam S_BITS = $clog2(MAXS+1),
@@ -31,7 +33,7 @@ module control #(
         .SIZE(X_ADDR_BITS)
     ) x_ptr (
         .clk(clk), .reset(reset), //reset assert before the next clk when X_read_addr is the last address in the R by C matrix
-        .inc_en((state == iterate) && stall_bar),
+        .inc_en((state == iterate) && stall_bar && !set_X_addr),
         .prev_count(X_next_addr),
         .new_count(X_read_addr) // register only; always_comb is what X_read_addr shows
     );
@@ -48,17 +50,28 @@ module control #(
             state <= next_state;
     end 
 
-    logic [S_BITS+C-1 : 0] delta_R_reg, delta_R
+    logic [S_BITS+C-1:0] delta_R_reg, delta_R;
+    logic [R-1:0] R_ptr, R_ptr_reg;
+    //logic [C-1:0] C_ptr, C_ptr_reg;
+    logic [X_ADDR_BITS-1:0] array_addr, next_addr, slice_addr;
+    logic set_X_addr;
     
     always_ff @(posedge clk) begin
-        delta_R_reg <= delta_R
+        delta_R_reg <= delta_R;
+        R_ptr_reg <= R_ptr;
     end 
 
     always_comb begin
         init_acc = 0;
         valid_read = 0;
+        set_X_addr = 0;
+        compute_finished = 0;
         case(state)
             inital : begin
+                array_addr = 0;
+                next_addr = array_addr + S;
+                slice_addr = 0;
+                R_ptr = 0; 
                 if (en) begin
                     init_acc = 1;
                     delta_R = R * C; 
@@ -69,18 +82,31 @@ module control #(
             iterate : begin
 
                 valid_read = 1; 
-
-                if ( ) begin                                    //complete the last window's last row, complete
-                        reset_W_addr = 1;
-                        reset_X_addr = 1;
-                        compute_finished = 1;
-                        next_state <= inital;
-                    end else if () begin                        //complete the last element in the window, move to next window
-                        reset_W_addr = 1;
-                        X_next_addr = next_window;              //next_Window along the same row ot the next row
-                    end else if (W_read_addr == base_column + K) begin
-                        X_next_addr = X_read_addr + (C - K) + 1; //complete the last element in the slice, move to next row
-                    end
+                if ((next_addr + K > array_addr + C) && (R_ptr + S + K > R)) begin   //complete the last window's last row, complete
+                    reset_W_addr = 1;
+                    reset_X_addr = 1;
+                    compute_finished = 1;
+                    next_state <= inital;
+                end  
+                else if (W_read_addr == K*K-1) begin                                //complete the last element in the window, move to next window
+                    reset_W_addr = 1;
+                    set_X_addr = 1;                                                   
+                    if (!(next_addr + K > array_addr + C)) begin                                //next_Window is along the same row
+                        X_next_addr = slice_addr + S; 
+                        slice_addr = X_next_addr;
+                    end 
+                    else if ((next_addr + K > array_addr + C) && !(R_ptr + S + K > R)) begin    //next_window is the next row
+                        X_next_addr = array_addr + delta_R_Reg;   
+                        array_addr = X_next_addr;      
+                        slice_addr = X_next_addr;     
+                    end 
+                end 
+                else if (W_read_addr == slice_addr + K) begin                       //complete the last element in the slice, move to next row within in the same window
+                    set_X_addr = 1;
+                    X_next_addr = slice_addr + C; 
+                end
+                else 
+                    X_next_addr = W_read_addr; 
 
             end
 
@@ -90,60 +116,7 @@ module control #(
 
 endmodule
 
-    // always_ff @(posedge clk) begin
-    //     if (reset || reset_X_addr) begin
-    //         next_window <= S;
-    //         based_row <= '0;
-    //     end else if ((state == inc_row) && reset_W_addr) begin // ff -> comb -> ff
-    //         if (next_window + S > based_row + (C - K)) begin    //C is adjust per row, base_row is the refered mulitpal of Row
-    //             // next row, stride to the apporiate row, hummm
-    //             // based_row + C << (S >> 1) + C (S mod 2);
-    //             next_window <= based_row + C*S;
-    //             based_row <= next_window;
-    //         end else
-    //             next_window <= next_window + S;
-    //     end
-    // end
-
-
-    // always_comb begin
-    //     reset_W_addr = 0;
-    //     reset_X_addr = 0;
-    //     compute_finished = 0;
-    //     init_acc = 1;
-    //     valid = 0;
-    //     next_state = state;
-    //     X_next_addr = X_read_addr;
-    //     case (state)
-    //         idle : begin
-    //             reset_W_addr = 1;
-    //             reset_X_addr = 1;
-    //             base_column = 0;
-    //             if (input_loaded)
-    //                 next_state <= inc_col;
-    //         end
-    //         inc_col : begin
-    //             valid = 1;
-    //             init_acc = 0;
-    //             if (ready) begin
-    //                 if (X_read_addr == R*C-1) begin      //complete the last window's last row, complete
-    //                     reset_W_addr = 1;
-    //                     reset_X_addr = 1;
-    //                     compute_finished = 1;
-    //                 end else if (W_read_addr == K*K-1) begin //complete the last row in the window, move to next window
-    //                     reset_W_addr = 1;
-    //                     X_next_addr = next_window;
-    //                 end else if (W_read_addr == base_column + K) begin
-    //                     X_next_addr = X_read_addr + (C - K) + 1; //complete the last column in a row, move to next row
-    //                 end
-    //             end 
-    //         end
-    //         default : begin
-    //             valid = 0;
-    //             next_state = idle;
-    //         end
-    //     endcase
-    // end
+ 
 
 /*Then, your new Part 3 control logic will be responsible for reading the input data from the input
 memories using the X_read_addr and W_read_addr signals and feeding the values of 𝑋, 𝑊, and
