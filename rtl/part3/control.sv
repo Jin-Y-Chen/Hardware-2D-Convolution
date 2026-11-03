@@ -103,7 +103,7 @@ module control #(
                 end 
                 else if (W_read_addr == slice_addr + K) begin                       //complete the last element in the slice, move to next row within in the same window
                     set_X_addr = 1;
-                    X_next_addr = slice_addr + C; 
+                    X_next_addr = X_next_addr + C; 
                 end
                 else 
                     X_next_addr = W_read_addr; 
