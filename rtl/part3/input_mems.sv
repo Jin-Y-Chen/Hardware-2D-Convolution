@@ -1,45 +1,8 @@
-module memory #(
-    parameter WIDTH=16, SIZE=64,
-    localparam LOGSIZE=$clog2(SIZE)
-)(
-    input clk, wr_en, // clock and write enable
-    input [LOGSIZE-1:0] addr, // address input
-    input [WIDTH-1:0]   data_in, // data input
-    output logic [WIDTH-1:0] data_out // data output
-);
-    logic [SIZE-1:0][WIDTH-1:0] mem;
-
-    always_ff @(posedge clk) begin
-        data_out <= mem[addr];
-
-        if (wr_en)
-            mem[addr] <= data_in;
-    end
-
-endmodule
-
-module counter #(
-    parameter SIZE = 32
-) (
-    input clk, reset, inc_en,
-    input [SIZE-1 : 0] prev_count,
-    output logic [SIZE-1:0] new_count
-);
-    always_ff @(posedge clk) begin //same rising edge as the memory write
-        if (reset)
-            new_count <= 0;
-        else
-            new_count <= prev_count + inc_en;
-    end 
-
-endmodule
-
-
 module input_mems #(
-    parameter WIDTH = param::WIDTH,
-    parameter R = param::R,
-    parameter C = param::C,
-    parameter K = param::K,
+    parameter WIDTH = 16,
+    parameter R = 16,
+    parameter C = 16,
+    parameter K = 3,
     localparam MAXS = ((R > C) ? R : C) - K + 1,
     localparam S_BITS = $clog2(MAXS+1),
     localparam X_ADDR_BITS = $clog2(R*C),
@@ -198,6 +161,43 @@ module input_mems #(
     
 endmodule
 
+
+module memory #(
+    parameter WIDTH=16, SIZE=64,
+    localparam LOGSIZE=$clog2(SIZE)
+)(
+    input clk, wr_en, // clock and write enable
+    input [LOGSIZE-1:0] addr, // address input
+    input [WIDTH-1:0]   data_in, // data input
+    output logic [WIDTH-1:0] data_out // data output
+);
+    logic [SIZE-1:0][WIDTH-1:0] mem;
+
+    always_ff @(posedge clk) begin
+        data_out <= mem[addr];
+
+        if (wr_en)
+            mem[addr] <= data_in;
+    end
+
+endmodule
+
+
+module counter #(
+    parameter SIZE = 32
+) (
+    input clk, reset, inc_en,
+    input [SIZE-1 : 0] prev_count,
+    output logic [SIZE-1:0] new_count
+);
+    always_ff @(posedge clk) begin //same rising edge as the memory write
+        if (reset)
+            new_count <= 0;
+        else
+            new_count <= prev_count + inc_en;
+    end 
+
+endmodule
 /* 
 Section 1.1: loading the 𝑊 and 𝑋 matrices and the bias value 𝐵. (Testbench Stage 1.)
 Section 1.2: loading the values of 𝑆 and 𝑄. (Testbench Stage 2.)

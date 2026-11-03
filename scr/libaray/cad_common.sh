@@ -212,6 +212,17 @@ RSYNC_TOOL_EXCLUDES=(
     --exclude '_lib*'
     --exclude '.nfs*'
     --exclude '*.do'
+    --exclude 'xcelium.d/'
+    --exclude 'INCA_libs/'
+    --exclude '.simvision/'
+    --exclude 'waves.shm/'
+    --exclude '*.shm'
+    --exclude 'xrun.log'
+    --exclude 'xrun.history'
+    --exclude 'xrun.key'
+    --exclude 'irun.log'
+    --exclude 'irun.history'
+    --exclude 'irun.key'
 )
 
 # Sync one project folder (rtl, tb, sim, syn, or log) with CAD.

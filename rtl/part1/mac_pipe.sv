@@ -1,8 +1,8 @@
 import param::*;
 
 module pre_accum_ff #(
-    parameter WIDTH = param::WIDTH,
-    parameter ACCW  = param::ACCW
+    parameter WIDTH = 16,
+    parameter ACCW  = 48
 )(
     input clk, reset, 
 
@@ -33,8 +33,8 @@ module pre_accum_ff #(
 endmodule 
 
 module accum_post_ff #(
-    parameter WIDTH = param::WIDTH,
-    parameter ACCW  = param::ACCW
+    parameter WIDTH = 16,
+    parameter ACCW  = 48
 ) (
     input clk, reset, en, load_init,
     input [6:0] in_Q,

@@ -1,70 +1,3 @@
-import param::*;
-
-module pre_accum_ff #(
-    parameter WIDTH = param::WIDTH,
-    parameter ACCW  = param::ACCW
-)(
-    input clk, reset, 
-
-    input in_valid,
-    input signed [2*WIDTH-1:0] in_product,
-    input [6:0] in_Q,
-
-    output logic out_valid,
-    output logic signed [2*WIDTH-1:0] out_product,
-    output logic [6:0] out_Q
-);
-    
-    always_ff @(posedge clk) begin
-        if (reset) begin
-            out_product <= '0;
-            out_valid <= 1'b0;
-            out_Q <= '0;
-        end else begin
-            // valid must update every cycle so an idle cycle clears en
-            out_valid <= in_valid;
-            if (in_valid) begin
-                out_product <= in_product;
-                out_Q <= in_Q;
-            end
-        end
-    end 
-
-endmodule 
-
-module accum_post_ff #(
-    parameter WIDTH = param::WIDTH,
-    parameter ACCW  = param::ACCW
-) (
-    input clk, reset, en, load_init,
-    input [6:0] in_Q,
-    input logic signed [WIDTH-1:0] init_value,
-    input logic signed [ACCW-1:0] in_accum,
-
-    output logic [6:0] out_Q,
-    output logic signed [ACCW-1:0] out_accum
-);
-
-    always_ff @(posedge clk) begin
-        if (reset)
-            out_accum <= '0;
-        else if (load_init)
-            out_accum <= init_value;
-        else if (en)
-            out_accum <= in_accum;
-    end 
-
-    // Q is loaded aslong as input_vaild is asserted
-    always_ff @(posedge clk) begin
-        if (reset)
-            out_Q <= '0;
-        else if (en)
-            out_Q <= in_Q;
-    end
-
-
-endmodule
-
 /*
  When both init_acc and input_valid is asser, the product is discarded, though: the Q presented on that
 cycle is still captured, since input_valid was 1, and it scales the newly initialized accumulator value.)
@@ -73,8 +6,8 @@ different behaviors at two different latencies.
 
 */
 module mac_pipe #(
-    parameter WIDTH = param::WIDTH,
-    parameter ACCW  = param::ACCW,
+    parameter WIDTH = 16,
+    parameter ACCW  = 48,
     localparam signed [ACCW-1:0] MAXOUT = (1 <<< (WIDTH-1)) - 1,
     localparam signed [ACCW-1:0] MINOUT = -(1 <<< (WIDTH-1))
 )(
@@ -131,5 +64,71 @@ module mac_pipe #(
         else
             out = post_accum >>> out2_Q;
     end
+
+endmodule
+
+module pre_accum_ff #(
+    parameter WIDTH = 16,
+    parameter ACCW  = 48
+)(
+    input clk, reset, 
+
+    input in_valid,
+    input signed [2*WIDTH-1:0] in_product,
+    input [6:0] in_Q,
+
+    output logic out_valid,
+    output logic signed [2*WIDTH-1:0] out_product,
+    output logic [6:0] out_Q
+);
+    
+    always_ff @(posedge clk) begin
+        if (reset) begin
+            out_product <= '0;
+            out_valid <= 1'b0;
+            out_Q <= '0;
+        end else begin
+            // valid must update every cycle so an idle cycle clears en
+            out_valid <= in_valid;
+            if (in_valid) begin
+                out_product <= in_product;
+                out_Q <= in_Q;
+            end
+        end
+    end 
+
+endmodule 
+
+
+module accum_post_ff #(
+    parameter WIDTH = 16,
+    parameter ACCW  = 48
+) (
+    input clk, reset, en, load_init,
+    input [6:0] in_Q,
+    input logic signed [WIDTH-1:0] init_value,
+    input logic signed [ACCW-1:0] in_accum,
+
+    output logic [6:0] out_Q,
+    output logic signed [ACCW-1:0] out_accum
+);
+
+    always_ff @(posedge clk) begin
+        if (reset)
+            out_accum <= '0;
+        else if (load_init)
+            out_accum <= init_value;
+        else if (en)
+            out_accum <= in_accum;
+    end 
+
+    // Q is loaded aslong as input_vaild is asserted
+    always_ff @(posedge clk) begin
+        if (reset)
+            out_Q <= '0;
+        else if (en)
+            out_Q <= in_Q;
+    end
+
 
 endmodule
