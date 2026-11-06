@@ -10,20 +10,32 @@ module control #(
     localparam C_BITS = $clog2(C),
     localparam W_ADDR_BITS = $clog2(K*K),
     localparam MAXS = ((R > C) ? R : C) - K + 1,
-    localparam S_BITS = $clog2(MAXS+1),
+    localparam S_BITS = $clog2(MAXS+1)
 ) (
-    input clk, reset, en;
+    input clk, reset, en, stall_bar,
     input [S_BITS-1:0] S,
-    output logic init_acc;
-    output logic [X_ADDR_BITS-1:0] X_read_addr;
-    output logic [W_ADDR_BITS-1:0] W_read_addr;
-    output logic valid_read, compute_finished;
+    output logic init_acc,
+    output logic [X_ADDR_BITS-1:0] X_read_addr,
+    output logic [W_ADDR_BITS-1:0] W_read_addr,
+    output logic valid_read, compute_finished
 );
+
+    enum logic [0:0] {
+        inital,
+        iterate
+    } state, next_state;
+
+    logic [S_BITS+C-1:0] delta_R;
+    logic [R-1:0] R_ptr;
+    //logic [C-1:0] C_ptr, C_ptr_reg;
+    logic [X_ADDR_BITS-1:0] X_next_addr, array_addr, next_array, slice_addr, next_slice;
+    logic [W_ADDR_BITS-1:0] W_next_addr;
+    logic set_X_addr, reset_W_addr, reset_X_addr;
 
     counter #(
         .SIZE(W_ADDR_BITS)
     ) w_ptr (
-        .clk(clk), .reset(reset), //reset assert before the next clk when W_read_addr is the last address in the K by K window
+        .clk(clk), .reset(reset || reset_W_addr), //reset assert before the next clk when W_read_addr is the last address in the K by K window
         .inc_en((state == iterate) && stall_bar),
         .prev_count(W_next_addr),
         .new_count(W_read_addr)
@@ -32,33 +44,23 @@ module control #(
     counter #(
         .SIZE(X_ADDR_BITS)
     ) x_ptr (
-        .clk(clk), .reset(reset), //reset assert before the next clk when X_read_addr is the last address in the R by C matrix
+        .clk(clk), .reset(reset || reset_X_addr), //reset assert before the next clk when X_read_addr is the last address in the R by C matrix
         .inc_en((state == iterate) && stall_bar && !set_X_addr),
         .prev_count(X_next_addr),
         .new_count(X_read_addr) // register only; always_comb is what X_read_addr shows
     );
-
-    enum logic [0:0] {
-        inital,
-        iterate
-    } state, next_state;
     
     always_ff @(posedge clk) begin
         if (reset)
             state <= inital;
-        else 
+        else if (en)
             state <= next_state;
     end 
-
-    logic [S_BITS+C-1:0] delta_R_reg, delta_R;
-    logic [R-1:0] R_ptr, R_ptr_reg;
-    //logic [C-1:0] C_ptr, C_ptr_reg;
-    logic [X_ADDR_BITS-1:0] array_addr, next_addr, slice_addr;
-    logic set_X_addr;
     
     always_ff @(posedge clk) begin
-        delta_R_reg <= delta_R;
-        R_ptr_reg <= R_ptr;
+        //delta_R_reg <= delta_R;
+        //R_ptr_reg <= R_ptr;
+        
     end 
 
     always_comb begin
@@ -66,11 +68,16 @@ module control #(
         valid_read = 0;
         set_X_addr = 0;
         compute_finished = 0;
+        X_next_addr = X_read_addr;                              //next element within the same slice 
+        W_next_addr = W_read_addr;
+        reset_W_addr = 0;
+        reset_X_addr = 0;
         case(state)
             inital : begin
                 array_addr = 0;
-                next_addr = array_addr + S;
+                next_array = array_addr + S;
                 slice_addr = 0;
+                next_slice = slice_addr;
                 R_ptr = 0; 
                 if (en) begin
                     init_acc = 1;
@@ -82,7 +89,7 @@ module control #(
             iterate : begin
 
                 valid_read = 1; 
-                if ((next_addr + K > array_addr + C) && (R_ptr + S + K > R)) begin   //complete the last window's last row, complete
+                if ((next_array + K > array_addr + C) && (R_ptr + S + K > R)) begin   //complete the last window's last row, complete
                     reset_W_addr = 1;
                     reset_X_addr = 1;
                     compute_finished = 1;
@@ -91,23 +98,21 @@ module control #(
                 else if (W_read_addr == K*K-1) begin                                //complete the last element in the window, move to next window
                     reset_W_addr = 1;
                     set_X_addr = 1;                                                   
-                    if (!(next_addr + K > array_addr + C)) begin                                //next_Window is along the same row
+                    if (!(next_array + K > array_addr + C))                                     //next_Window is along the same row
                         X_next_addr = slice_addr + S; 
-                        slice_addr = X_next_addr;
-                    end 
-                    else if ((next_addr + K > array_addr + C) && !(R_ptr + S + K > R)) begin    //next_window is the next row
-                        X_next_addr = array_addr + delta_R_Reg;   
+                    else if ((next_array + K > array_addr + C) && !(R_ptr + S + K > R)) begin   //next_window is the next row
+                        X_next_addr = array_addr + delta_R;   
                         array_addr = X_next_addr;      
-                        slice_addr = X_next_addr;     
                     end 
+                    slice_addr = X_next_addr;
+                    next_slice = slice_addr;
                 end 
-                else if (W_read_addr == slice_addr + K) begin                       //complete the last element in the slice, move to next row within in the same window
+                else if (W_read_addr == next_slice + K - 1) begin                       //complete the last element in the slice, move to next row within in the same window
                     set_X_addr = 1;
-                    X_next_addr = X_next_addr + C; 
-                end
-                else 
-                    X_next_addr = W_read_addr; 
-
+                    X_next_addr = X_next_addr + C - K + 1; 
+                    next_slice += K;
+                    
+                end                                     
             end
 
         endcase

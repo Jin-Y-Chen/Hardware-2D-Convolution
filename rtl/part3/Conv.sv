@@ -25,7 +25,7 @@ module Conv #(
     input OUTPUT_TREADY
 );
     // interconnects (input_mems -> mac_pipe)
-    logic input_loaded, compute_finished, stall_bar;
+    logic input_loaded, compute_finished, stall_bar, valid_read;
     logic init_acc;
     logic [W_ADDR_BITS-1:0] W_read_addr;
     logic [X_ADDR_BITS-1:0] X_read_addr;
@@ -44,10 +44,10 @@ module Conv #(
     ) FSM_ctrl(
         .clk(clk), .reset(reset), 
         .en(input_loaded), .stall_bar(stall_bar),
-        .S(S)
-        .init_acc(init_acc);    //state flag 
+        .S(S),
+        .init_acc(init_acc),    //state flag 
         .X_read_addr(X_read_addr),
-        .W_read_addr(X_read_addr),
+        .W_read_addr(W_read_addr),
         .valid_read(valid_read),
         .compute_finished(compute_finished)
     );
@@ -72,7 +72,7 @@ module Conv #(
         //intermediate input
         .compute_finished(compute_finished),
         .X_read_addr(X_read_addr), //drive X_data
-        .W_read_addr(W_read_addr), //drive W_data
+        .W_read_addr(W_read_addr) //drive W_data
     );
 
     mac_pipe #(
@@ -109,3 +109,58 @@ module Conv #(
     );
 
 endmodule
+
+   // always_ff @(posedge clk) begin
+    //     if (reset || reset_X_addr) begin
+    //         next_window <= S;
+    //         based_row <= '0;
+    //     end else if ((state == inc_row) && reset_W_addr) begin // ff -> comb -> ff
+    //         if (next_window + S > based_row + (C - K)) begin    //C is adjust per row, base_row is the refered mulitpal of Row
+    //             // next row, stride to the apporiate row, hummm
+    //             // based_row + C << (S >> 1) + C (S mod 2);
+    //             next_window <= based_row + C*S;
+    //             based_row <= next_window;
+    //         end else
+    //             next_window <= next_window + S;
+    //     end
+    // end
+
+
+    // always_comb begin
+    //     reset_W_addr = 0;
+    //     reset_X_addr = 0;
+    //     compute_finished = 0;
+    //     init_acc = 1;
+    //     valid = 0;
+    //     next_state = state;
+    //     X_next_addr = X_read_addr;
+    //     case (state)
+    //         idle : begin
+    //             reset_W_addr = 1;
+    //             reset_X_addr = 1;
+    //             base_column = 0;
+    //             if (input_loaded)
+    //                 next_state <= inc_col;
+    //         end
+    //         inc_col : begin
+    //             valid = 1;
+    //             init_acc = 0;
+    //             if (ready) begin
+    //                 if (X_read_addr == R*C-1) begin      //complete the last window's last row, complete
+    //                     reset_W_addr = 1;
+    //                     reset_X_addr = 1;
+    //                     compute_finished = 1;
+    //                 end else if (W_read_addr == K*K-1) begin //complete the last row in the window, move to next window
+    //                     reset_W_addr = 1;
+    //                     X_next_addr = next_window;
+    //                 end else if (W_read_addr == base_column + K) begin
+    //                     X_next_addr = X_read_addr + (C - K) + 1; //complete the last column in a row, move to next row
+    //                 end
+    //             end 
+    //         end
+    //         default : begin
+    //             valid = 0;
+    //             next_state = idle;
+    //         end
+    //     endcase
+    // end
