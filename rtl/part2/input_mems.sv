@@ -112,17 +112,21 @@ module input_mems #(
             state <= next_state;
     end 
 
+    logic check_once_reg, check_once;
+
     always_ff @(posedge clk) begin
         if (reset) begin
             valid_W <= 0;
             valid_B <= 0;
             valid_X <= 0;
+            check_once_reg <= 0;
         end
         //store the values of 𝑆 and 𝑄 during the first cycle of this state.
         else if (AXIS_TVALID && AXIS_TREADY && !valid_W && (state == input_W)) begin //lock with SQ
             S <= AXIS_TUSER[S_BITS:1];
             Q <= AXIS_TUSER[S_BITS+7:S_BITS+1];
             valid_W <= 1;
+            check_once_reg <= check_once;
         end
         // take in the 𝐵 (bias) value on the next valid rising edge
         else if (AXIS_TVALID && AXIS_TREADY && !valid_B && (state == input_B)) begin
@@ -135,6 +139,7 @@ module input_mems #(
         //skip input_W if new_W = 0. TREADY is 0 here, so this first beat is not accepted yet.
         else if ((state == input_loaded) && compute_finished) begin
             valid_X <= 0;
+            check_once_reg <= 0;
             if (new_W) begin
                 valid_W <= 0;
                 valid_B <= 0;
@@ -153,7 +158,10 @@ module input_mems #(
             // take in W matrix data via its AXI-Stream input interface.
             input_W : begin
                 AXIS_TREADY = 1;
-                
+                if (!check_once_reg) begin
+                    next_state = (new_W) ? input_W : input_X;
+                    check_once = 1;
+                end 
                 if (mem_addr == unsigned'((K * K) - 1) && AXIS_TVALID) begin //This phase is complete after the entire 𝑊 matrix is loaded (𝐾2 values).
                     next_state = input_B;
                     rst_addr = 1;
@@ -180,7 +188,8 @@ module input_mems #(
                     inputs_loaded = 0;
                     // TREADY is 0, so this beat stays on the bus. Branch only once it is valid.
                     // new_W (TUSER[0]) is meaningful on that first beat: 1 reloads W, 0 skips to X.
-                    next_state = (new_W) ? input_W : input_X;
+                    next_state = input_W;//next_state = (new_W) ? input_W : input_X;
+                    check_once = 0;
                 end
                 else
                     inputs_loaded = 1; //output inputs_loaded=1 during this phase.
