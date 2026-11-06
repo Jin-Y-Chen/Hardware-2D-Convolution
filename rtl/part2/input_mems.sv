@@ -76,7 +76,7 @@ module input_mems #(
     logic [SIZE-1:0] mem_addr;
 
     //internal register, non-memory component
-    logic valid_W, valid_B, valid_X, is_finished; //stay 1 after the first accepted beat of that phase
+    logic valid_W, valid_B, valid_X; //stay 1 after the first accepted beat of that phase
 
     counter #(.SIZE(SIZE)) address_counter (
         .clk(clk), .reset(reset || rst_addr),
@@ -103,7 +103,7 @@ module input_mems #(
         .data_out(X_data)       //data_out port of the X memory should connect directly to the X_data
     );
 
-    assign new_W = AXIS_TUSER[0];
+    assign new_W = (AXIS_TVALID) ? AXIS_TUSER[0] : new_W;
 
     always_ff @(posedge clk) begin
         if (reset) //synchronized reset, update output on rising edge of clock with asserted reset
@@ -117,14 +117,12 @@ module input_mems #(
             valid_W <= 0;
             valid_B <= 0;
             valid_X <= 0;
-            is_finished <= 0;
         end
         //store the values of 𝑆 and 𝑄 during the first cycle of this state.
         else if (AXIS_TVALID && AXIS_TREADY && !valid_W && (state == input_W)) begin //lock with SQ
             S <= AXIS_TUSER[S_BITS:1];
             Q <= AXIS_TUSER[S_BITS+7:S_BITS+1];
             valid_W <= 1;
-            is_finished <= 0;
         end
         // take in the 𝐵 (bias) value on the next valid rising edge
         else if (AXIS_TVALID && AXIS_TREADY && !valid_B && (state == input_B)) begin
@@ -133,15 +131,9 @@ module input_mems #(
         end
         else if (AXIS_TVALID && AXIS_TREADY && !valid_X && (state == input_X)) begin
             valid_X <= 1;
-            is_finished <= 0;
-        end
-        //monitor the compute_finished input signal. When compute_finished==1 on a positive clock edge,
-        else if ((state == input_loaded) && compute_finished) begin
-            is_finished <= 1;
         end
         //skip input_W if new_W = 0. TREADY is 0 here, so this first beat is not accepted yet.
-        else if ((state == input_loaded) && is_finished && AXIS_TVALID) begin
-            is_finished <= 0;
+        else if ((state == input_loaded) && compute_finished) begin
             valid_X <= 0;
             if (new_W) begin
                 valid_W <= 0;
@@ -161,6 +153,7 @@ module input_mems #(
             // take in W matrix data via its AXI-Stream input interface.
             input_W : begin
                 AXIS_TREADY = 1;
+                
                 if (mem_addr == unsigned'((K * K) - 1) && AXIS_TVALID) begin //This phase is complete after the entire 𝑊 matrix is loaded (𝐾2 values).
                     next_state = input_B;
                     rst_addr = 1;
@@ -169,7 +162,8 @@ module input_mems #(
             // single handshake 
             input_B: begin
                 AXIS_TREADY = 1; //stay ready between W and X
-                next_state = AXIS_TVALID ? input_X : state;
+                if (AXIS_TVALID)
+                    next_state = input_X;
             end
             // take in 𝑋 matrix data via its AXI-Stream input interface.
             input_X : begin
@@ -182,12 +176,11 @@ module input_mems #(
             // In this phase, ensure that the S, B, and Q output signals hold the correct values.
             input_loaded    : begin
                 AXIS_TREADY = 0; //not ready to receive new inputs, so it must output AXIS_TREADY=0.
-                if (is_finished) begin //if complete == 1, set inputs_loaded to 0
+                if (compute_finished) begin //if complete == 1, set inputs_loaded to 0
                     inputs_loaded = 0;
                     // TREADY is 0, so this beat stays on the bus. Branch only once it is valid.
                     // new_W (TUSER[0]) is meaningful on that first beat: 1 reloads W, 0 skips to X.
-                    if (AXIS_TVALID)
-                        next_state = new_W ? input_W : input_X;
+                    next_state = (new_W) ? input_W : input_X;
                 end
                 else
                     inputs_loaded = 1; //output inputs_loaded=1 during this phase.

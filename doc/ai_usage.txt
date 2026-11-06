@@ -307,4 +307,45 @@ Date: 10/31
     A: Integer division in a localparam already rounds down to the nearest integer when both sides are non-negative. 
     (R - K) / S drops the fraction, so localparam ROUT = (R - K) / S + 1 is the floor 
 
+    Q: if I assume latches by not setting the default values in always_comb, will synthesis just produce warning?
+
+    A: The warning is the tool telling you it built a latch. A signal not assigned on every path of always_comb keeps its previous value, so synthesis infers a level-sensitive latch instead of combinational logic. The design still elaborates. The netlist is storage, not the combinational function of a fully assigned block.
+
+    Q: So to avoid assume lateches I have to assign all my memory signal in always_comb to a always_ff block? For example
+
+        always_ff @(posedge clk) begin
+            a <= a;
+        end; 
+
+    or can I just
+
+        always_comb 
+            a = a;
+
+    A: Neither of those is the hold you want. always_comb a = a is a combinational loop: a is driven by itself, and synthesis does not turn that into a flip-flop. always_ff a <= a is a flip-flop whose D input is its own Q, so it never takes a new value. One signal also cannot be assigned from both blocks.
+
+    Keep the register only in always_ff, and give the comb block its own next value. Assign that next value on every path, using the register when the path should hold:
+
+        always_ff @(posedge clk) a <= a_next;
+        always_comb begin
+            a_next = a;
+        end
+
+    Q: suppose K is an parameter or localparam and in the always comb block we perform K * K. Does this create a multiplciation 
+    unit or the K * K will be predefine before run time since the produce can be define during complied time? 
+
+    A: No multiplier is built. A parameter or localparam is an elaboration-time constant, so K * K is folded to the constant K squared before simulation or synthesis maps gates. Putting that expression in always_comb does not change that. A multiplier appears only when one operand is a signal that can change at runtime. If the other operand is still the parameter, synthesis builds a constant multiply, shifts and adds, not a general two-input multiplier.
     
+    Q: whats a effective way to lock an signal value only of the first cycle?
+
+    A: Use a second register that records whether the capture already happened. Load the value only while that flag is clear and this is the cycle you care about, and set the flag on that same clock. Later clocks see the flag and leave the value alone. Reset clears the flag so the next capture is allowed. The flag makes "first" mean the first enabled clock, not clock zero.
+
+    Q: AXIS_TVALID and AXIS_TREADY has to be the condition inside an always ff block or can I combinationally check AXIS_TVALID and TREADY and only stores the value on the positive edge?
+
+    A: The store is in always_ff. The test can be combinational and used as the enable. accept is the value of valid and ready as the edge arrives.
+
+        accept = AXIS_TVALID && AXIS_TREADY;
+        always_ff @(posedge clk) begin
+            if (accept)
+                stored <= AXIS_TDATA;
+        end 
