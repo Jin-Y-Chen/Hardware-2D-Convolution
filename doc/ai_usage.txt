@@ -8,7 +8,7 @@ Date: 9/20,
     R: "number of bits used to represent each individual numerical value"
 
     --------------------------------------------------
-    Q: what's a recommend project folder structure with emphasizes on automation with script?
+    Q[violate]: what's a recommend project folder structure with emphasizes on automation with script?
         *ASK for folder name, convention, and structure
 
     [Cursor Grok-4.6] 
@@ -79,22 +79,22 @@ Date: 9/26,
 
 Date: 9/27, 
     ---------------------------------------------------
-    Q: *Asking for specific edge cases: how to assign out = 0 initially without causing double assignment
+    Q[violate]: *Asking for specific edge cases: how to assign out = 0 initially without causing double assignment
 
     R: Q_reg is uninitialized, shifting cause Unknown
 
     ---------------------------------------------------
-    Q: *Asking for specific edge cases: the MAC output without saturation is wrong for init_acc = 1
+    Q[violate]: *Asking for specific edge cases: the MAC output without saturation is wrong for init_acc = 1
 
     R: init_acc does not load Q_reg, Q_reg stay at the value from the last input_valid
 
     ---------------------------------------------------
-    Q: *Asking for specific edge cases: the MAC output is not shifting correctly
+    Q[violate]: *Asking for specific edge cases: the MAC output is not shifting correctly
 
     R: if both input_valid and init_acc is assert the Q_reg is loaded with Q
 
     ---------------------------------------------------
-    Q: *Have the accumaulator and Q_reg in the same register, if statement is bit janky
+    Q[violate]: should I Have the accumaulator and Q_reg in the same register, if statement is bit janky
 
     R: Split accumaulator and Q into two seperate register, similatr to the layout
 
@@ -105,7 +105,7 @@ Date: 9/27,
     R: Shows the correct syntax for module instatntiation
 
     ---------------------------------------------------
-    Q: *Asking for specific edge cases: the MAC_pipeline output should still update even without all {0,0,0} control signal
+    Q[violate]: *Asking for specific edge cases: the MAC_pipeline output should still update even without all {0,0,0} control signal
 
     R: Did not pipeline the input_valid through the first register
 
@@ -126,7 +126,7 @@ Date: 10/2,
     R: Yes. If slack is MET (critical path used the whole period), the chip can run at the clock you set. One cycle is that period.
     
     ---------------------------------------------------
-    Q: Then to calculate the energy required, E = P_av(T(50)), where T(50) = (50 + i)t such that t is the period for slack = MET and i is adjusted/different value of the acutal cycle amount
+    Q[violate]: Then to calculate the energy required, E = P_av(T(50)), where T(50) = (50 + i)t such that t is the period for slack = MET and i is adjusted/different value of the acutal cycle amount
 
     R: Yes
 
@@ -148,7 +148,7 @@ Date: 10/6,
 
 Date: 10/8,
     ---------------------------------------------------
-    Q: why is the critical path consistently from bit [0] to bit [47] of out\accum\reg in reg2
+    Q[violate]: why is the critical path consistently from bit [0] to bit [47] of out\accum\reg in reg2
 
     R: In an adder, a change on the LSB can affect every higher sum bit. The MSB waits the longest, so STA reports [0] → [47].
 
@@ -159,11 +159,11 @@ Date: 10/8,
 
 Date: 10/9
     ---------------------------------------------------
-    Q: Check the fromulation for the energy per cycle equation 
+    Q[violate]: Check the fromulation for the energy per cycle equation 
 
     R: Yes 
     ---------------------------------------------------
-    Q: Then we can calculate the energy of the design for all frequency value, where we will expect the a similar trend in the power vs frequency plot
+    Q[violate]: Then we can calculate the energy of the design for all frequency value, where we will expect the a similar trend in the power vs frequency plot
 
     R: E can be computed at every MET frequency, but it should not follow the power plot. E = 51 P t = 51 P / f. Power rises with f; energy is flatter and higher at low f because leakage is paid for a longer time.
 
@@ -216,124 +216,93 @@ Date: 10/13
     R: Assert zero when the receiver cannot accept another data beat on the current clock edge, prevent overwrite, resets state, input_loaded state
 
     ---------------------------------------------------
-    Q: Does TREADY get set low between state transition, if both set accepts value
+    Q[violate]: Does TREADY get set low between state transition, if both state accepts value
 
     R: Depend on design, since we have consecutive writes state, Keep TREADY = 1.
 
     ---------------------------------------------------
-    Q: What should be changed in the address counter so that the count match with timing of the design?
+    Q[violate]: What should be changed in the address counter so that the count match with timing of the design?
 
     R: The counter moved from negedge to the same posedge as the memory write. It increments only on TVALID && TREADY during input_W or input_X, and <= writes the old address before the count updates.
 
     ---------------------------------------------------
-    Q: Stage 3 fails on the first new_W=0 test. W[0] got the expected X[0], and B got a later X word. S and Q also changed.
+    Q[violate]: Stage 3 fails on the first new_W=0 test. W[0] got the expected X[0], and B got a later X word. S and Q also changed.
 
     R: Do not use the old new_W at compute_finished (make it combinational). Hold TREADY at 0 and read TUSER[0] on the next first beat.
 
     ---------------------------------------------------
-    Q: look at the code will it syntheize, is there any potential minior issues in sythesis
+    Q[violate]: look at the code will it syntheize, is there any potential minior issues in sythesis
 
     R: Yes. always_ff becomes registers. Assign AXIS_TREADY, rst_addr, input_loaded in all three in every state to avoid latches.
 
 Date: 10/30 
-
+    ---------------------------------------------------
     Q: is this legal: assign a[63:32] = 0; assign a[31:0] = 1; as long as the index don't overlap the non-blocking assign of the same array is fine? 
 
     A: Legal, for statment example inside always_ff tool will warm but not reject
 
+--- Part3 ---
 Date: 10/31
+    ---------------------------------------------------
+    Q: This is the same complexity as if I just do multiplication of a X b
 
-    Q: what are some traversal idea for a fixed window to stride through an undetermine X-matrix dimension. The next windows must fit within the x-matrix
-    after the window had shift by strided amount, thus some columns or rows is allow to be skip as the windows traverse through the x-matrix in row major order.
-    In other word, moving the window require seting a counter value (counter will increments each element in the window) to the corresponding address of input_mems
-    that stores the value. Striding the next window need to account if it will fit in the same column or have to skip to the next row and striding to the new row
-    will be multiple of the column size of the x-matrix by the stride. 
-    
+    always_comb begin 
+        i = 0;
+        product = 0;
+        while (i < b_length) begin
+            product = (b[i:i]) ? (product << 1) + a :  (product << 1) + 0;
+            i++;
+        end
+    end
 
-    A: The address of X[row][col] is row * C + col, where C is the matrix width. It is not row_ptr * column_ptr. 
+    A: Yes. Each pass shifts product left one bit and adds a when that bit of b is 1. Synthesis unrolls the while into 
+    b_length add-and-shift stages, the same circuit as a multiply. The hardware cost is still one multiply. 
 
-    Keep the address of the window's top-left and scan the K by K window from there. The next column is addr + 1. 
-    
-    The end of a window row is addr + (C - K + 1), which jumps from column c0+K-1 to the next row at column c0. W_read_addr is a separate counter that adds 1 for each of those K*K steps, then returns to 0.
+    ---------------------------------------------------
+    Q: if I precompute an muliplication product can i reference it later? 
 
-    The next window fits in this row when c0 + S <= C - K. Then the new top-left is origin + S. C - K is a constant. If it does not fit, the next row fits when r0 + S <= R - K. The new top-left is the current row base plus S*C, and the column origin returns to 0.
+    Yes. A register holds the product after the cycle that computes it. Later cycles read that register. 
+    The multiply runs again only when that register is updated. The stored value is the product of the inputs 
+    from the cycle it was captured.
 
+    ---------------------------------------------------
+    Q: when is it faster to perform addition operation per cycle than lookup table per cycle. 
 
-    Q: there is the problem of not using any multiplication
+    A: An add is faster when the table is large and the add is narrow. The add's delay is the carry chain. 
+    The table's delay is the read, and a large table's multiplexer gets deeper than that carry chain. 
+    A small table can be as short as a wide add. If the add is repeated for several cycles and the 
+    table returns the value in one read, the table finishes in fewer cycles.
 
-            if (next_window + S > C - K)            // C is not adjust per row, C need to be a mulitple of Row
-                next_window <= next_window + (C - K)// next row but does not stride to the apporiate row or current row + (c-1)*S + 1
-            else 
-                next_window <= next_window + S;
+    ---------------------------------------------------
+    Q: if I have an log_2(k*k) bit adder and an log_2(k) bits address lookup table, which is faster? The sum value and the 
+    values store in the LUT is the same bit length
 
-    how to compare for any row that the next_window must move to the next row ?
+    A: log2(k*k) is 2 log2(k), so the adder is twice as many bits as the address. That address selects k entries, a k-to-1 
+    mux copied once per bit of the sum. For small k, about 4, both are one short level. As k grows, the k-to-1 mux gets 
+    deeper while the carry chain only grows as 2 log2(k), so the adder becomes the shorter path. 
 
-    A: Keep row_base, the address of column 0 on the current window row. It starts at 0. The test on every row is 
-    next_window + S > row_base + (C - K). 
-    
-    row_base + (C - K) is the last legal column of this row, so the limit moves with the row. 
-
-    Q: Without multiplication of S how do get the next row based on the Stride value at run time
-
-    A: Add C, S times. C is the constant row length, so each add moves one image row down, and S adds move S rows down. That sum is S*C with no multiply.
-
-    row_base starts at 0. When the next window does not fit in this row, add C to row_base once per clock and count until the count equals S. next_window then becomes that new row_base, which is column 0 of the row S image rows below. Adding C - K only steps inside the current window. It does not stride to the next row.
-
-    Q: here is the example for calculating next window with always comb:
+    ---------------------------------------------------
+    Q: suppose an always_ff block A depend on the combination out of block B, but output of block B update on the result of block A.
+    For example:
 
     alwasy_ff(posedge clk) begin
-        if (reset) 
-            next_window <= S;
-        else if (state == next_window && new_window = 1); since at posedge clk new_window = 0;
-            next_window <= next_window + S;             
-
-
+        if (condition_1) 
+            a <= b + 1; 
+            
     always_comb begin
-        new_window = 0;
-        case(state)
-        ...
-        next_window : begin
-            new_window = 1;             // after posedge clk new_window = 1; 
-            X_read_addr = next_window;  // will it be S or 2S after and rest then a posedge clk 
-        end 
-        ...
-        endcase;
+            condition_1 = 1;
+            b = a;  // will it be b = a or b = b + 1 on the next rising edge
     end;
 
-    lets say next_window <= S on reset and does not change until state == next_window, will X_read_addr = S or 2S. 
+    will it be b = a (previous value before the posedge clk) or b = b + 1 on the next rising edge? 
 
-    A: X_read_addr is S on the clock that enters state next_window. always_comb reads the register before the 
-    nonblocking update, so next_window + S is scheduled as 2S and is visible only on the following clock. 
-    new_window is also 0 at that edge, because it still follows the previous state. It becomes 1 after state updates.
+    A: After the rising edge settles, b equals the new a, which is one greater than b was before the edge. That second update 
+    happens because the nonblocking change to a runs always_comb again.
 
-    The semicolon after the else if makes next_window <= next_window + S run on every clock that is not reset, 
-    and new_window = 1 assigns instead of compares. With that semicolon, next_window does not stay at S until 
-    the state matches.
-
+    ---------------------------------------------------
     Q: How do you do the floor operation in localparam in verliog?
 
     A: Integer division in a localparam already rounds down to the nearest integer when both sides are non-negative. 
     (R - K) / S drops the fraction, so localparam ROUT = (R - K) / S + 1 is the floor 
 
-    Q: This is the same complexity as if I just do S * C?
-
-    always_comb begin 
-        i = 0;
-        stride_column_amt = 0;
-        while (i < S_BITS) 
-            stride_column_amt += (S[i:i]) C << i ? 0
-    end;
-
-    A: Yes. Each bit of S adds a shifted copy of C: bit 0 adds C, bit 1 adds C<<1, bit 2 adds C<<2. That sum is S*C. 
-    A combinational while does not run S times at runtime. Synthesis unrolls it into S_BITS adders in one cycle, the 
-    same circuit as based_row + S*C.
-
-    Adding C once per clock, S times, is the smaller circuit. It uses one adder and takes S cycles.
-
-    Q: Add C per cycle wouldn't work if if S >  K^2 * (C - K)/S, taking more cycle to add the next row. Whats a better alternative?
-
-    A: Use one cycle of S*C. C is constant, so S*C is a constant multiply, and next_window <= based_row + S*C is ready on the clock that leaves the row.
-
-    Adding C once per clock needs S cycles, and those cycles have to fit inside the current row. A row is about Cout*K^2 cycles, with Cout = (C - K)/S + 1.
-     The product K^2 * (C - K)/S drops that extra window, so the real limit is S > Cout*K^2. Large S makes Cout smaller, which is when the S adds no longer 
-     hide behind the row. S*C does not depend on that limit.
+    
