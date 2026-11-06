@@ -6,7 +6,7 @@ package param;
 
     localparam int R = 15;  // rows in X
     localparam int C = 13;  // cols in X
-    localparam int K = 7;  // rows and cols in W
+    localparam int K = 3;  // rows and cols in W
 
     localparam signed [ACCW-1:0] MAXOUT = (1 <<< (WIDTH-1)) - 1;
     localparam signed [ACCW-1:0] MINOUT = -(1 <<< (WIDTH-1));

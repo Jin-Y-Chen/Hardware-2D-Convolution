@@ -1,5 +1,7 @@
 AI Usage Log
 
+*all scripting files are written by ai to functionally run the desire tasks* 
+
 Date: 9/20,
     --------------------------------------------------
     Q: what does WIDTH mean in the context of a TUSER parameter? 
