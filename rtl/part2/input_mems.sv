@@ -38,7 +38,7 @@ module input_mems #(
     logic [SIZE-1:0] mem_addr;
 
     //internal register, non-memory component
-    logic check_once_reg, check_once; //check once flag if there is new TUSER 
+    logic check_once; //check once flag if there is new TUSER 
 
     counter #(.SIZE(SIZE)) address_counter (
         .clk(clk), .reset(reset || rst_addr),
@@ -72,25 +72,27 @@ module input_mems #(
             state <= next_state;
     end 
 
+    assign new_W = AXIS_TUSER[0];
+
     always_ff @(posedge clk) begin
         if (reset) begin
-            check_once_reg <= 0;
+            check_once <= 0;
         end
         else begin
-            // Peek beat is still on the bus: TREADY is 0. Sample TUSER once.
-            if (!check_once_reg && AXIS_TVALID) begin
-                new_W <= AXIS_TUSER[0];
-                if (AXIS_TUSER[0]) begin
+            if (!check_once && AXIS_TVALID) begin // Sample TUSER once.
+                check_once <= 1;
+                if (new_W) begin
                     S <= AXIS_TUSER[S_BITS:1];
                     Q <= AXIS_TUSER[S_BITS+7:S_BITS+1];
                 end
             end
-            // take in the 𝐵 (bias) value on the next valid rising edge
-            else if (AXIS_TVALID && AXIS_TREADY && (state == input_B)) begin
-                B <= signed'(AXIS_TDATA);
-            end
 
-            check_once_reg <= check_once;
+            if ((state == input_loaded) && compute_finished)
+                check_once <= 0;
+
+            // take in the 𝐵 (bias) value on the next valid rising edge
+            if (AXIS_TVALID && AXIS_TREADY && (state == input_B))
+                B <= signed'(AXIS_TDATA);
         end
     end
 
@@ -104,13 +106,9 @@ module input_mems #(
         case (state)
             // take in W matrix data via its AXI-Stream input interface.
             input_W : begin
-                if (!check_once_reg) begin // new_W is registered from this cycle's TUSER.
+                if (!check_once) begin // new_W is registered from this cycle's TUSER.
                     AXIS_TREADY = 0;
-                    check_once = AXIS_TVALID;
-                end
-                else if (!new_W) begin // check for if not new weight, skip to input_x.
-                    AXIS_TREADY = 0;
-                    next_state = input_X;
+                    next_state = (AXIS_TVALID && !new_W) ? input_X : state; // check for if not new weight, skip to input_x.
                 end
                 else begin
                     AXIS_TREADY = 1;
@@ -140,7 +138,6 @@ module input_mems #(
                 if (compute_finished) begin //if complete == 1, set inputs_loaded to 0
                     inputs_loaded = 0;
                     next_state = input_W;
-                    check_once = 0;
                 end
                 else
                     inputs_loaded = 1; //output inputs_loaded=1 during this phase.
