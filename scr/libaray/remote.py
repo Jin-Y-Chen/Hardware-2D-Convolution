@@ -179,7 +179,7 @@ def op_tidy(args):
     shutil.rmtree(proj / "constraint/param", ignore_errors=True)
     shutil.rmtree(proj / "constraint/config", ignore_errors=True)
     for rel in (
-        "rtl/param_pkg.sv", "tb/part1/params.sv", "tb/part2/params.sv",
+        "rtl/param.sv", "rtl/param_pkg.sv", "tb/part1/params.sv", "tb/part2/params.sv",
         "sim/part1/params.sv", "syn/params.sv",
     ):
         path = proj / rel

@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 LOG = ROOT / "log" / "vsyn.log"
-PARAM = ROOT / "rtl" / "param.sv"
+PARAM = ROOT / "rtl" / "params.sv"
 
 
 def out_dir(design):

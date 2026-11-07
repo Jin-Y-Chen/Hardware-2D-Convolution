@@ -12,7 +12,7 @@ vsim [TOP] [DUT]
   vsim --seed N [TOP] [DUT]
 
   [TOP] is the testbench. [DUT] is the design.
-  When [DUT] is input_mems, WIDTH, R, C, and K come from rtl/param.sv.
+  When [DUT] is input_mems, WIDTH, R, C, and K come from rtl/params.sv.
   TVALID_PROB and STAGE come from sim in constraint/all_config.json.
   Files for [TOP] are the matching line in scr/libaray/src_path.
   TVALID_PROB and TREADY_PROB come from sim in constraint/all_config.json.
@@ -41,7 +41,7 @@ apply_config
 [[ "$SEED_SET" -eq 0 ]] && SEED="$CFG_SEED"
 [[ -n "$TOP" && -n "$DUT" ]] || { usage >&2; exit 2; }
 # mac is the combinational DUT (PIPELINED 0); mac_pipe is the pipelined one (PIPELINED 1).
-# input_mems reads rtl/param.sv for WIDTH, R, C, K.
+# input_mems reads rtl/params.sv for WIDTH, R, C, K.
 # sim.TVALID_PROB and sim.STAGE override the testbench parameters.
 vsim_args=(vsim --proj "$REMOTE_PROJECT_REL" --top "$TOP" --seed "$SEED")
 case "$DUT" in

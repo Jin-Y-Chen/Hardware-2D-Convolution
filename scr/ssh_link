@@ -9,7 +9,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/libaray/cad_common.sh"
 # Extra rsync excludes per tree. Paths are relative to that folder.
 # Tool junk (work/, *.svf, command.log, …) is already dropped in cad_common.sh.
 declare -A TREE_EXTRAS
-TREE_EXTRAS[rtl]="--exclude /command.log --exclude /default.svf --exclude *.svf"
+TREE_EXTRAS[rtl]="--exclude /command.log --exclude /default.svf --exclude *.svf --exclude /param.sv"
 TREE_EXTRAS[tb]="--exclude /README.md --exclude /part1/params.sv --exclude /part2/params.sv --exclude /part1/simParams1 --exclude /part1/genParams1 --exclude /part1/wave.do"
 TREE_EXTRAS[sim]="--exclude /part1/params.sv --exclude /part1/param.sv"   # old genParams1 output
 TREE_EXTRAS[syn]="--exclude /params.sv --exclude /command.log --exclude /default.svf --exclude *.svf"
@@ -47,7 +47,7 @@ link_tree() {
     printf '    %-4s  %s\n' "$name/" "$(link_summary "$out" "$empty")"
 }
 
-# Regenerate rtl/param.sv before the push.
+# Regenerate rtl/params.sv before the push. sim/ and syn/ keep their own params.sv.
 apply_config
 
 echo "link  LOCAL  <->  $REMOTE_NAME  (~/$REMOTE_PROJECT_REL)"

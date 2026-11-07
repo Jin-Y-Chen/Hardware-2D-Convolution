@@ -95,7 +95,7 @@ import "DPI-C" function void dump_cycle(input longint t,
 import "DPI-C" function void dump_summary(input int cycles, input int fails);
 
 // simParams2 compiles sim/part2/params.sv first, which defines these macros.
-// vsim does not, and then WIDTH, R, C, and K come from rtl/param.sv.
+// vsim does not, and then WIDTH, R, C, and K come from rtl/params.sv.
 
 module input_mems_tb_mod();
 
@@ -107,10 +107,10 @@ module input_mems_tb_mod();
     parameter C      = `CVAL;      // C is the number of cols in the X matrix
     parameter K      = `KVAL;      // K is the number of rows/cols in the W matrix
 `else
-    parameter WIDTH  = param::WIDTH;  // WIDTH is the number of bits of each input value (X, W, B)
-    parameter R      = param::R;      // R is the number of rows in the X matrix
-    parameter C      = param::C;      // C is the number of cols in the X matrix
-    parameter K      = param::K;      // K is the number of rows/cols in the W matrix
+    parameter WIDTH  = params::WIDTH;  // WIDTH is the number of bits of each input value (X, W, B)
+    parameter R      = params::R;      // R is the number of rows in the X matrix
+    parameter C      = params::C;      // C is the number of cols in the X matrix
+    parameter K      = params::K;      // K is the number of rows/cols in the W matrix
 `endif
 
     // The probability that the testbench asserts AXIS_TVALID=1

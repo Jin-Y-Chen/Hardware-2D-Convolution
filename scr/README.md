@@ -47,17 +47,17 @@ scr/
     └── plot.py
 ```
 
-`link` syncs `rtl/`, `tb/`, `sim/`, and `syn/`, then overwrites `log/`. `vlog` compiles on CAD, uploads `rtl/param.sv`, and writes `sim/part2/params.sv` and `sim/part3/params.sv` there. `vsim` and `vsyn` compile with that same step. `vsyn` then fills `syn/runsynth.tcl` on CAD and runs it. Tool output is printed in the console and saved under `log/`.
+`link` syncs `rtl/`, `tb/`, `sim/`, and `syn/`, then overwrites `log/`. `vlog` compiles on CAD, uploads `rtl/params.sv`, and writes `sim/part2/params.sv` and `sim/part3/params.sv` there. `vsim` and `vsyn` compile with that same step. `vsyn` then fills `syn/runsynth.tcl` on CAD and runs it. Tool output is printed in the console and saved under `log/`.
 
 `PIPELINED` is `0` for `mac` and `1` for `mac_pipe`. A wrong mix prints `Set design.PIPELINED to 0 in constraint/all_config.json for mac.` A bad `vlog`, `vsim`, or `vsyn` command prints that command's help.
 
-`vsim [TOP] [DUT]` for `input_mems` reads `design.WIDTH`, `R`, `C`, and `K` from `rtl/param.sv`. `sim.TVALID_PROB` and `sim.STAGE` stay in `constraint/all_config.json` and are passed to the testbench.
+`vsim [TOP] [DUT]` for `input_mems` reads `design.WIDTH`, `R`, `C`, and `K` from `rtl/params.sv`. `sim.TVALID_PROB` and `sim.STAGE` stay in `constraint/all_config.json` and are passed to the testbench.
 
 `vlog Conv`, `vsim Conv_tb Conv`, and `vsyn Conv` compile `rtl/part3/input_mems.sv`, `mac_pipe.sv`, `fifo_out.sv`, and `Conv.sv`. `Conv_tb` also compiles `tb/part4/test_helper.c`. `sim.TVALID_PROB` and `sim.TREADY_PROB` are written into `params.sv` as `TVPR` and `TRPR`.
 
 ## pdata
 
-`pdata` runs on this machine. It reads `log/vsyn.log` and `rtl/param.sv`, then writes one row to `data/part1/<design>.csv` (`mac`, `mac_pipe`), `data/part2/input_mems.csv`, or `data/part3/Conv.csv`. The design name is `TOP_MOD_NAME` from the log. A later run with the same design, `WIDTH`, `ACCW`, and period replaces that row. Pass a log path to read a file other than `log/vsyn.log`.
+`pdata` runs on this machine. It reads `log/vsyn.log` and `rtl/params.sv`, then writes one row to `data/part1/<design>.csv` (`mac`, `mac_pipe`), `data/part2/input_mems.csv`, or `data/part3/Conv.csv`. The design name is `TOP_MOD_NAME` from the log. A later run with the same design, `WIDTH`, `ACCW`, and period replaces that row. Pass a log path to read a file other than `log/vsyn.log`.
 
 ```bash
 vsyn mac

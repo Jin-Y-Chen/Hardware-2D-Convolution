@@ -1,10 +1,11 @@
 # Paths used by vlog, vsim, and vsyn. Paths are from the repo root.
 # First word is the key. Blank lines and lines starting with # are ignored.
-# incdir: directories searched for `include "params.sv".
-# params: generated defines files written on CAD.
+# incdir: directories searched for `include "params.sv" (sim define files).
+# rtl/params.sv is the package. It is compiled from the file list, not included.
+# params: generated defines files written on CAD. Sim and syn keep these.
 # A design name is the file list for that top. Keep rtl/params.sv first.
 
-incdir          tb/part1 tb/part2 tb/part3 sim/part2 sim/part3 rtl rtl/part1 rtl/part2 rtl/part3
+incdir          tb/part1 tb/part2 tb/part3 sim/part2 sim/part3 rtl/part1 rtl/part2 rtl/part3
 params          sim/part2/params.sv sim/part3/params.sv
 
 mac            rtl/params.sv rtl/part1/mac.sv

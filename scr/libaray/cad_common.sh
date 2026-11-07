@@ -17,7 +17,7 @@ LOCAL_RTL="$PROJECT_ROOT/rtl"
 LOCAL_CONSTRAINT="$PROJECT_ROOT/constraint"
 LOCAL_LOG="$PROJECT_ROOT/log"
 ALL_CONFIG="$LOCAL_CONSTRAINT/all_config.json"
-PARAM_PKG="$LOCAL_RTL/param.sv"
+PARAM_PKG="$LOCAL_RTL/params.sv"
 
 # rsync is required for link and for copying logs back.
 require_rsync() {
@@ -28,7 +28,8 @@ require_rsync() {
 
 require_rsync
 
-# Write rtl/param.sv from constraint/all_config.json.
+# Write rtl/params.sv from constraint/all_config.json.
+# sim/part2/params.sv and sim/part3/params.sv are separate `define files.
 # Sets P_WIDTH P_ACCW P_PIPE CFG_SEED CFG_CLK CFG_RST CFG_PERIOD
 #     P_R P_C P_K P_TVPR P_STAGE P_TRPR.
 # Part 2 names match genParams2: WIDTH R C K TVALID_PROB STAGE.
@@ -82,7 +83,7 @@ except Exception:
 
 pkg_path.write_text(
     "// Generated from constraint/all_config.json. Edit that file, not this one.\n"
-    "package param;\n"
+    "package params;\n"
     f"    localparam int WIDTH = {width};  // input / output bits\n"
     f"    localparam int ACCW  = {accw};  // accumulator bits\n"
     f"    localparam int PIPELINED = {pipelined};  // testbench: 0 = mac, 1 = mac_pipe\n"
@@ -264,7 +265,7 @@ write_remote_params() {
 }
 
 # Compile the src_path list for one top-level name. Does not sync the tree (that is link).
-# Uploads rtl/param.sv and writes the params line from src_path. Other sources must already be on CAD.
+# Uploads rtl/params.sv and writes the sim params line from src_path. Other sources must already be on CAD.
 cad_vlog() {
     apply_config
     local name="$1" list f d
@@ -282,7 +283,7 @@ cad_vlog() {
     FILE_LIST="${files[*]}"   # vsim and vsyn pass this list on
     INCDIR_ARGS=("${inc[@]}") # vsim passes the same include dirs
     remote_dirs rtl
-    rsync_to_remote "$PARAM_PKG" "~/$REMOTE_PROJECT_REL/rtl/param.sv"
+    rsync_to_remote "$PARAM_PKG" "~/$REMOTE_PROJECT_REL/rtl/params.sv"
     write_remote_params
     echo "vlog  ${FILE_LIST}"
     set +e

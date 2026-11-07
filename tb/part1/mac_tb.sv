@@ -11,7 +11,7 @@
 //       - If you want to run in GUI mode, remove -c
 
 // simParams1 compiles sim/part1/params.sv first, which defines WIDTHVAL, ACCWVAL,
-// and PIPELINEDVAL. vsim does not, and then those values come from rtl/param.sv.
+// and PIPELINEDVAL. vsim does not, and then those values come from rtl/params.sv.
 
 // Please see the project description for a high-level description of this testbench and how to run it. Comments are also included throughout to help understand how the testbench works.
 
@@ -96,9 +96,9 @@ module mac_tb();
     parameter ACCW  = `ACCWVAL;             // the number of bits in the accumulator
     parameter PIPELINED = `PIPELINEDVAL;    // 0 = mac, 1 = mac_pipe
 `else
-    parameter WIDTH = param::WIDTH;         // the number of bits in the inputs and the output
-    parameter ACCW  = param::ACCW;          // the number of bits in the accumulator
-    parameter PIPELINED = param::PIPELINED; // 0 = mac, 1 = mac_pipe (design.PIPELINED)
+    parameter WIDTH = params::WIDTH;         // the number of bits in the inputs and the output
+    parameter ACCW  = params::ACCW;          // the number of bits in the accumulator
+    parameter PIPELINED = params::PIPELINED; // 0 = mac, 1 = mac_pipe (design.PIPELINED)
 `endif
 
     logic clk, reset;

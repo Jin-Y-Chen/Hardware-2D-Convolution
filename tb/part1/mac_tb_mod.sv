@@ -10,8 +10,8 @@
 //      [options]:
 //       - If you want to run in GUI mode, remove -c
 
-// Note that this testbench takes WIDTH / ACCW / PIPELINED from rtl/param.sv,
-// generated from constraint/all_config.json. Compile param.sv first.
+// Note that this testbench takes WIDTH / ACCW / PIPELINED from rtl/params.sv,
+// generated from constraint/all_config.json. Compile params.sv first.
 
 // Please see the project description for a high-level description of this testbench and how to run it. Comments are also included throughout to help understand how the testbench works.
 
@@ -98,9 +98,9 @@ endclass
 module mac_tb_mod();
 
     parameter TESTS = 10000;             // the number of cycles of input to simulate
-    parameter WIDTH = param::WIDTH;         // the number of bits in the inputs and the output
-    parameter ACCW  = param::ACCW;          // the number of bits in the accumulator
-    parameter PIPELINED = param::PIPELINED;     // 0 = mac, 1 = mac_pipe (design.PIPELINED)
+    parameter WIDTH = params::WIDTH;         // the number of bits in the inputs and the output
+    parameter ACCW  = params::ACCW;          // the number of bits in the accumulator
+    parameter PIPELINED = params::PIPELINED;     // 0 = mac, 1 = mac_pipe (design.PIPELINED)
     parameter TRACE = 1;                 // 1: print every cycle's signals; 0: fails only
 
     logic clk, reset;
