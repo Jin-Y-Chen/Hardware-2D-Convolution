@@ -36,8 +36,8 @@ module control #(
         .SIZE(W_ADDR_BITS)
     ) w_ptr (
         .clk(clk), .reset(reset || reset_W_addr), //reset assert before the next clk when W_read_addr is the last address in the K by K window
-        .inc_en((state == iterate) && stall_bar),
-        .prev_count(W_next_addr),
+        .inc_en(valid_read && stall_bar),
+        .prev_count(W_read_addr),
         .new_count(W_read_addr)
     );
 
@@ -45,7 +45,7 @@ module control #(
         .SIZE(X_ADDR_BITS)
     ) x_ptr (
         .clk(clk), .reset(reset || reset_X_addr), //reset assert before the next clk when X_read_addr is the last address in the R by C matrix
-        .inc_en((state == iterate) && stall_bar && !set_X_addr),
+        .inc_en(valid_read && stall_bar && !set_X_addr),
         .prev_count(X_next_addr),
         .new_count(X_read_addr) // register only; always_comb is what X_read_addr shows
     );
@@ -69,7 +69,6 @@ module control #(
         set_X_addr = 0;
         compute_finished = 0;
         X_next_addr = X_read_addr;                              //next element within the same slice 
-        W_next_addr = W_read_addr;
         reset_W_addr = 0;
         reset_X_addr = 0;
         case(state)
@@ -83,17 +82,19 @@ module control #(
                     init_acc = 1;
                     delta_R = R * C; 
                     next_state = iterate;
+                    valid_read = 1; 
                 end 
             end
 
-            iterate : begin
-
+            iterate : begin     //intial value loaded
                 valid_read = 1; 
+                
                 if ((next_array + K > array_addr + C) && (R_ptr + S + K > R)) begin   //complete the last window's last row, complete
                     reset_W_addr = 1;
                     reset_X_addr = 1;
                     compute_finished = 1;
                     next_state <= inital;
+                    valid_read = 0; 
                 end  
                 else if (W_read_addr == K*K-1) begin                                //complete the last element in the window, move to next window
                     reset_W_addr = 1;

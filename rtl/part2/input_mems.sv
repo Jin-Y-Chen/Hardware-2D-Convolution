@@ -1,8 +1,10 @@
+import params::*;
+
 module input_mems #(
-    parameter WIDTH = param::WIDTH,
-    parameter R = param::R,
-    parameter C = param::C,
-    parameter K = param::K,
+    parameter WIDTH = params::WIDTH,
+    parameter R = params::R,
+    parameter C = params::C,
+    parameter K = params::K,
     localparam MAXS = ((R > C) ? R : C) - K + 1,
     localparam S_BITS = $clog2(MAXS+1),
     localparam X_ADDR_BITS = $clog2(R*C),
@@ -181,8 +183,8 @@ module counter #(
         if (reset) begin
             new_count <= 0;
         end
-        else if (inc_en)
-            new_count <= prev_count + 1;
+        else
+            new_count <= prev_count + inc_en;
     end 
 
 endmodule

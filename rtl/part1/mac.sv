@@ -21,11 +21,11 @@ delayed copies) alone. If init_acc and input_valid are both asserted on the same
 accumulator is initialized, and the Q from that cycle is still captured and applied to the newly initialized
 value.
 */
-import param::*;
+import params::*;
 
 module mac #(
-    parameter WIDTH = param::WIDTH,
-    parameter ACCW  = param::ACCW,
+    parameter WIDTH = params::WIDTH,
+    parameter ACCW  = params::ACCW,
     localparam signed [ACCW-1:0] MAXOUT = (1 <<< (WIDTH-1)) - 1,
     localparam signed [ACCW-1:0] MINOUT = -(1 <<< (WIDTH-1))
 )(

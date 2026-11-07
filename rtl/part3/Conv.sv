@@ -1,10 +1,8 @@
-import param::*;
-
 module Conv #(
-    parameter WIDTH = param::WIDTH,
-    parameter R = param::R,
-    parameter C = param::C,
-    parameter K = param::K,
+    parameter WIDTH = params::WIDTH,
+    parameter R = params::R,
+    parameter C = params::C,
+    parameter K = params::K,
     localparam X_ADDR_BITS = $clog2(R*C),
     localparam W_ADDR_BITS = $clog2(K*K),
     localparam MAXS = ((R > C) ? R : C) - K + 1,
@@ -75,19 +73,21 @@ module Conv #(
         .W_read_addr(W_read_addr) //drive W_data
     );
 
+    logic valid_read1, valid_read2;
+    
     mac_pipe #(
         .WIDTH(WIDTH), .ACCW(ACCW)
     ) mac_unit (
         //shared control
         .clk(clk), .reset(reset),
         //intermediate input
-        .init_acc(init_acc), .input_valid(valid_read), .Q(Q),
+        .init_acc(init_acc), .input_valid(valid_read1), .Q(Q),
         .input0(X_data), .input1(W_data), .init_value(B),
         //intermediate ouput
         .out(out)
     );
     
-    logic valid_read1, valid_read2;
+   
 
     always_ff @(posedge clk) begin
         valid_read1 <= valid_read;

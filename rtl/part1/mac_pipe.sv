@@ -1,4 +1,3 @@
-import param::*;
 
 module pre_accum_ff #(
     parameter WIDTH = 16,
@@ -23,10 +22,10 @@ module pre_accum_ff #(
         end else begin
             // valid must update every cycle so an idle cycle clears en
             out_valid <= in_valid;
-            if (in_valid) begin
-                out_product <= in_product;
-                out_Q <= in_Q;
-            end
+            //if (in_valid) begin
+            out_product <= in_product;
+            out_Q <= in_Q;
+            //end
         end
     end 
 
@@ -72,9 +71,10 @@ This is one rule (init_acc takes effect in one cycle and has priority over accum
 different behaviors at two different latencies.
 
 */
+
 module mac_pipe #(
-    parameter WIDTH = param::WIDTH,
-    parameter ACCW  = param::ACCW,
+    parameter WIDTH = 16,
+    parameter ACCW  = 48,
     localparam signed [ACCW-1:0] MAXOUT = (1 <<< (WIDTH-1)) - 1,
     localparam signed [ACCW-1:0] MINOUT = -(1 <<< (WIDTH-1))
 )(
@@ -91,14 +91,14 @@ module mac_pipe #(
     logic signed [ACCW-1:0] post_accum, accum;
 
     //pre_accum stage
-    assign product = input0 * input1;
+    assign product = (input_valid) ? input0 * input1 : 0;
 
     //intermediate register from pre -> accum
     pre_accum_ff #(.WIDTH(WIDTH), .ACCW(ACCW)) reg1 (
         .clk(clk),
         .reset(reset),
         .in_valid(input_valid),
-        .in_product(product),
+        .in_product((product) ? product : 0),
         .in_Q(Q),
 
         .out_valid(out_valid),
