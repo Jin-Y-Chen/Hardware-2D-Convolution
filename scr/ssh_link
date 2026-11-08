@@ -7,14 +7,6 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/libaray/cad_common.sh"
 
 # Extra rsync excludes per tree. Paths are relative to that folder.
-# Tool junk (work/, *.svf, command.log, …) is already dropped in cad_common.sh.
-declare -A TREE_EXTRAS
-TREE_EXTRAS[rtl]="--exclude /command.log --exclude /default.svf --exclude *.svf --exclude /param.sv"
-TREE_EXTRAS[tb]="--exclude /README.md --exclude /part1/params.sv --exclude /part2/params.sv --exclude /part1/simParams1 --exclude /part1/genParams1 --exclude /part1/wave.do"
-TREE_EXTRAS[sim]="--exclude /part1/params.sv --exclude /part1/param.sv"   # old genParams1 output
-TREE_EXTRAS[syn]="--exclude /params.sv --exclude /command.log --exclude /default.svf --exclude *.svf"
-TREE_EXTRAS[log]="--exclude /README.md"
-
 # rsync --out-format='%n' → one path per line (skip dir-only "./")
 link_summary() {
     local out="$1" empty="$2"
@@ -33,7 +25,6 @@ link_tree() {
     local local_dir="$PROJECT_ROOT/$name"
     local remote="$REMOTE_USER@$REMOTE_HOST:~/$REMOTE_PROJECT_REL/$name/"
     # shellcheck disable=SC2206
-    local extras=( ${TREE_EXTRAS[$name]} )
     local out
 
     mkdir -p "$local_dir"

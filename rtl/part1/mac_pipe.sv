@@ -98,7 +98,7 @@ module mac_pipe #(
         .clk(clk),
         .reset(reset),
         .in_valid(input_valid),
-        .in_product((product) ? product : 0),
+        .in_product(product),
         .in_Q(Q),
 
         .out_valid(out_valid),

@@ -1,8 +1,8 @@
 module Conv #(
-    parameter WIDTH = params::WIDTH,
-    parameter R = params::R,
-    parameter C = params::C,
-    parameter K = params::K,
+    parameter WIDTH = 16,
+    parameter R = 16,
+    parameter C = 16,
+    parameter K = 3,
     localparam X_ADDR_BITS = $clog2(R*C),
     localparam W_ADDR_BITS = $clog2(K*K),
     localparam MAXS = ((R > C) ? R : C) - K + 1,
@@ -23,7 +23,7 @@ module Conv #(
     input OUTPUT_TREADY
 );
     // interconnects (input_mems -> mac_pipe)
-    logic input_loaded, compute_finished, stall_bar, valid_read;
+    logic input_loaded, memory_fetched, stall_bar, valid_read, y_valid;
     logic init_acc;
     logic [W_ADDR_BITS-1:0] W_read_addr;
     logic [X_ADDR_BITS-1:0] X_read_addr;
@@ -47,7 +47,8 @@ module Conv #(
         .X_read_addr(X_read_addr),
         .W_read_addr(W_read_addr),
         .valid_read(valid_read),
-        .compute_finished(compute_finished)
+        .memory_fetched(memory_fetched),
+        .y_valid(y_valid)
     );
 
     input_mems #(
@@ -68,20 +69,31 @@ module Conv #(
         .W_data(W_data), 
 
         //intermediate input
-        .compute_finished(compute_finished),
+        .compute_finished(memory_fetched),
         .X_read_addr(X_read_addr), //drive X_data
         .W_read_addr(W_read_addr) //drive W_data
     );
 
-    logic valid_read1, valid_read2;
-    
+    logic y_valid1, y_valid2;
+
+    // y_valid marks the last tap. Two flops line it up with mac_pipe's out.
+    always_ff @(posedge clk) begin
+        if (reset) begin
+            y_valid1 <= 0;
+            y_valid2 <= 0;
+        end else begin
+            y_valid1 <= y_valid;
+            y_valid2 <= y_valid1;
+        end
+    end
+
     mac_pipe #(
         .WIDTH(WIDTH), .ACCW(ACCW)
     ) mac_unit (
         //shared control
         .clk(clk), .reset(reset),
         //intermediate input
-        .init_acc(init_acc), .input_valid(valid_read1), .Q(Q),
+        .init_acc(init_acc), .input_valid(valid_read), .Q(Q),
         .input0(X_data), .input1(W_data), .init_value(B),
         //intermediate ouput
         .out(out)
@@ -89,22 +101,22 @@ module Conv #(
     
    
 
-    always_ff @(posedge clk) begin
-        valid_read1 <= valid_read;
-
-        valid_read2 <= valid_read1;
-    end
-
     fifo_out #(
         .WIDTH(WIDTH), .DEPTH(DEPTH)
     ) axis_out (
+        //shared control
         .clk(clk), .reset(reset),
+        //intermediate input
         .IN_AXIS_TDATA(out),
-        .IN_AXIS_TVALID(valid_read2),          //input pipelined valid signal
+        .IN_AXIS_TVALID(y_valid2),          // one result per window, aligned with out
+
+        //intermediate output
         .IN_AXIS_TREADY(stall_bar),             //stall is asserted low or IN_AXIS_TREADY = stall_bar
-        //
+
+        //external output
         .OUT_AXIS_TDATA(OUTPUT_TDATA),
         .OUT_AXIS_TVALID(OUTPUT_TVALID),
+        //external input
         .OUT_AXIS_TREADY(OUTPUT_TREADY)
     );
 

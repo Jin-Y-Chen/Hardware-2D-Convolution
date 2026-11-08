@@ -1,10 +1,8 @@
-import params::*;
-
 module input_mems #(
-    parameter WIDTH = params::WIDTH,
-    parameter R = params::R,
-    parameter C = params::C,
-    parameter K = params::K,
+    parameter WIDTH = 16,
+    parameter R = 16,
+    parameter C = 16,
+    parameter K = 3,
     localparam MAXS = ((R > C) ? R : C) - K + 1,
     localparam S_BITS = $clog2(MAXS+1),
     localparam X_ADDR_BITS = $clog2(R*C),

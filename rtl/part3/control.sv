@@ -1,5 +1,4 @@
 
-
 module control #(
     parameter WIDTH = 16,
     parameter R = 16,
@@ -17,18 +16,30 @@ module control #(
     output logic init_acc,
     output logic [X_ADDR_BITS-1:0] X_read_addr,
     output logic [W_ADDR_BITS-1:0] W_read_addr,
-    output logic valid_read, compute_finished
+    output logic valid_read, y_valid, memory_fetched
 );
 
-    enum logic [0:0] {
+    // reload is one idle cycle so the last product is added before the next
+    // window loads B. finish is that same idle cycle on the last window.
+    enum logic [1:0] {
         inital,
-        iterate
+        iterate,
+        reload,
+        finish
     } state, next_state;
 
+    enum logic [2:0] {
+        by_step,
+        hold,
+        by_column,
+        by_row,
+        to_start
+    } move_window;
+
     logic [S_BITS+C-1:0] delta_R;
-    logic [R-1:0] R_ptr;
+    logic [R-1:0] next_R_ptr;
     //logic [C-1:0] C_ptr, C_ptr_reg;
-    logic [X_ADDR_BITS-1:0] X_next_addr, array_addr, next_array, slice_addr, next_slice;
+    logic [X_ADDR_BITS-1:0] X_next_addr, this_array, next_array, this_slice, next_slice;
     logic [W_ADDR_BITS-1:0] W_next_addr;
     logic set_X_addr, reset_W_addr, reset_X_addr;
 
@@ -53,71 +64,121 @@ module control #(
     always_ff @(posedge clk) begin
         if (reset)
             state <= inital;
-        else if (en)
+        else if (en || (state == finish))
             state <= next_state;
     end 
     
     always_ff @(posedge clk) begin
-        //delta_R_reg <= delta_R;
-        //R_ptr_reg <= R_ptr;
+        if (reset) begin
+            next_R_ptr <= 0;
+            this_slice <= 0;
+            this_array <= 0;
+            next_slice <= 0;
+            next_array <= 0;
+            delta_R <= 0;
+        end
+        else if ((state == inital) && en) begin
+            next_array <= C;
+            delta_R <= S*C;
+            next_slice <= S;
+            next_R_ptr <= S;
+        end 
+        else if ((state == iterate) && stall_bar) begin 
+
+            case (move_window)
+                by_step : begin
+                end
+                hold : begin
+                    this_slice <= X_next_addr;
+                end 
+                by_column : begin  
+                    this_slice <= X_next_addr;
+                    next_slice <= next_slice + S; 
+                    
+                end 
+                by_row : begin  // i.e. set new pivot to X_next_addr, 
+                    this_array <= X_next_addr;
+                    next_array <= X_next_addr + C;
+                    this_slice <= X_next_addr;
+                    next_slice <= X_next_addr + S;
+                    next_R_ptr <= next_R_ptr + S;
+                    
+                end
+                default : begin // reset all pointer to the first element
+                    this_slice <= 0;
+                    next_slice <= S;
+                    this_array <= 0;
+                    next_array <= C;
+                    next_R_ptr <= 0;
+                end 
+            endcase
+
+        end 
         
     end 
 
     always_comb begin
         init_acc = 0;
         valid_read = 0;
+        y_valid = 0;
         set_X_addr = 0;
-        compute_finished = 0;
-        X_next_addr = X_read_addr;                              //next element within the same slice 
+        memory_fetched = 0;
+        X_next_addr = X_read_addr; // next element within the same kernel row
         reset_W_addr = 0;
         reset_X_addr = 0;
-        case(state)
+        move_window = by_step;
+        next_state = state;
+        case (state)
             inital : begin
-                array_addr = 0;
-                next_array = array_addr + S;
-                slice_addr = 0;
-                next_slice = slice_addr;
-                R_ptr = 0; 
-                if (en) begin
+                // first tap of the image: load B and present X[0], W[0]
+                if (en && stall_bar) begin
                     init_acc = 1;
-                    delta_R = R * C; 
                     next_state = iterate;
                     valid_read = 1; 
                 end 
             end
 
-            iterate : begin     //intial value loaded
-                valid_read = 1; 
-                
-                if ((next_array + K > array_addr + C) && (R_ptr + S + K > R)) begin   //complete the last window's last row, complete
-                    reset_W_addr = 1;
-                    reset_X_addr = 1;
-                    compute_finished = 1;
-                    next_state <= inital;
-                    valid_read = 0; 
-                end  
-                else if (W_read_addr == K*K-1) begin                                //complete the last element in the window, move to next window
-                    reset_W_addr = 1;
-                    set_X_addr = 1;                                                   
-                    if (!(next_array + K > array_addr + C))                                     //next_Window is along the same row
-                        X_next_addr = slice_addr + S; 
-                    else if ((next_array + K > array_addr + C) && !(R_ptr + S + K > R)) begin   //next_window is the next row
-                        X_next_addr = array_addr + delta_R;   
-                        array_addr = X_next_addr;      
-                    end 
-                    slice_addr = X_next_addr;
-                    next_slice = slice_addr;
-                end 
-                else if (W_read_addr == next_slice + K - 1) begin                       //complete the last element in the slice, move to next row within in the same window
-                    set_X_addr = 1;
-                    X_next_addr = X_next_addr + C - K + 1; 
-                    next_slice += K;
-                    
-                end                                     
+            iterate : begin
+                // stall_bar low means this tap was not accepted. Leave X and W
+                // where they are so the same pixel is presented again.
+                if (stall_bar) begin
+                    valid_read = 1;
+                    init_acc = (W_read_addr == 0);
+                    if (W_read_addr == K*K-1) begin
+                        y_valid = 1;
+                        reset_W_addr = 1;
+                        set_X_addr = 1;
+                        if (next_slice + K <= next_array) begin
+                            move_window = by_column;
+                            X_next_addr = next_slice;
+                            next_state = reload;
+                        end
+                        else if (next_R_ptr + K <= R) begin
+                            move_window = by_row;
+                            X_next_addr = this_array + delta_R;
+                            next_state = reload;
+                        end
+                        else begin
+                            move_window = to_start;
+                            reset_X_addr = 1;
+                            next_state = finish;
+                        end
+                    end
+                    else if (X_read_addr == this_slice + K - 1) begin
+                        move_window = hold;
+                        set_X_addr = 1;
+                        X_next_addr = this_slice + C;
+                    end
+                end
             end
 
-        endcase
+            reload : next_state = iterate;
 
+            finish : begin
+                memory_fetched = 1;
+                next_state = inital;
+            end
+        endcase
     end 
 
 endmodule
