@@ -91,7 +91,7 @@ module mac_pipe #(
     logic signed [ACCW-1:0] post_accum, accum;
 
     //pre_accum stage
-    assign product = (input_valid) ? input0 * input1 : 0;
+    assign product = input0 * input1;
 
     //intermediate register from pre -> accum
     pre_accum_ff #(.WIDTH(WIDTH), .ACCW(ACCW)) reg1 (

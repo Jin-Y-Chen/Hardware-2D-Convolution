@@ -23,7 +23,7 @@ module Conv #(
     input OUTPUT_TREADY
 );
     // interconnects (input_mems -> mac_pipe)
-    logic input_loaded, memory_fetched, stall_bar, valid_read, y_valid;
+    logic input_loaded, stall_bar, valid_read, y_valid, memory_fetched;
     logic init_acc;
     logic [W_ADDR_BITS-1:0] W_read_addr;
     logic [X_ADDR_BITS-1:0] X_read_addr;
@@ -46,9 +46,10 @@ module Conv #(
         .init_acc(init_acc),    //state flag 
         .X_read_addr(X_read_addr),
         .W_read_addr(W_read_addr),
-        .valid_read(valid_read),
-        .memory_fetched(memory_fetched),
-        .y_valid(y_valid)
+        .input_valid(input_valid),
+        .y_valid(y_valid),
+        .memory_fetched(memory_fetched)
+        
     );
 
     input_mems #(
@@ -93,14 +94,12 @@ module Conv #(
         //shared control
         .clk(clk), .reset(reset),
         //intermediate input
-        .init_acc(init_acc), .input_valid(valid_read), .Q(Q),
+        .init_acc(init_acc), .input_valid(input_valid), .Q(Q),
         .input0(X_data), .input1(W_data), .init_value(B),
         //intermediate ouput
         .out(out)
     );
     
-   
-
     fifo_out #(
         .WIDTH(WIDTH), .DEPTH(DEPTH)
     ) axis_out (
