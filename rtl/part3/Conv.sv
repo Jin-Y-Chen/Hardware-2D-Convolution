@@ -23,7 +23,7 @@ module Conv #(
     input OUTPUT_TREADY
 );
     // interconnects (input_mems -> mac_pipe)
-    logic input_loaded, stall_bar, valid_read, y_valid, memory_fetched;
+    logic input_loaded, memory_fetched, stall_bar, input_valid, y_valid;
     logic init_acc;
     logic [W_ADDR_BITS-1:0] W_read_addr;
     logic [X_ADDR_BITS-1:0] X_read_addr;
@@ -47,9 +47,8 @@ module Conv #(
         .X_read_addr(X_read_addr),
         .W_read_addr(W_read_addr),
         .input_valid(input_valid),
-        .y_valid(y_valid),
-        .memory_fetched(memory_fetched)
-        
+        .memory_fetched(memory_fetched),
+        .y_valid(y_valid)
     );
 
     input_mems #(
@@ -75,16 +74,26 @@ module Conv #(
         .W_read_addr(W_read_addr) //drive W_data
     );
 
-    logic y_valid1, y_valid2;
+    logic y_valid1, y_valid2, y_valid3;
+    logic data_valid, init_acc_d, init_acc_d2;
 
-    // y_valid marks the last tap. Two flops line it up with mac_pipe's out.
+    // X_data/W_data are registered, so the MAC valid is one cycle later.
+    // init_acc waits two cycles: the last product is added, then B loads.
     always_ff @(posedge clk) begin
         if (reset) begin
             y_valid1 <= 0;
             y_valid2 <= 0;
+            y_valid3 <= 0;
+            data_valid <= 0;
+            init_acc_d <= 0;
+            init_acc_d2 <= 0;
         end else begin
             y_valid1 <= y_valid;
             y_valid2 <= y_valid1;
+            y_valid3 <= y_valid2;
+            data_valid <= input_valid;
+            init_acc_d <= init_acc;
+            init_acc_d2 <= init_acc_d;
         end
     end
 
@@ -94,12 +103,14 @@ module Conv #(
         //shared control
         .clk(clk), .reset(reset),
         //intermediate input
-        .init_acc(init_acc), .input_valid(input_valid), .Q(Q),
+        .init_acc(init_acc_d2), .input_valid(data_valid), .Q(Q),
         .input0(X_data), .input1(W_data), .init_value(B),
         //intermediate ouput
         .out(out)
     );
     
+   
+
     fifo_out #(
         .WIDTH(WIDTH), .DEPTH(DEPTH)
     ) axis_out (
@@ -107,7 +118,7 @@ module Conv #(
         .clk(clk), .reset(reset),
         //intermediate input
         .IN_AXIS_TDATA(out),
-        .IN_AXIS_TVALID(y_valid2),          // one result per window, aligned with out
+        .IN_AXIS_TVALID(y_valid3),          // finished sum, before B reloads
 
         //intermediate output
         .IN_AXIS_TREADY(stall_bar),             //stall is asserted low or IN_AXIS_TREADY = stall_bar

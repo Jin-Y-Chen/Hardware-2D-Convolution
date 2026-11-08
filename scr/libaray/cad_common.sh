@@ -224,6 +224,7 @@ RSYNC_TOOL_EXCLUDES=(
     --exclude 'irun.log'
     --exclude 'irun.history'
     --exclude 'irun.key'
+    --exclude '*.svwf'
 )
 
 # Sync one project folder (rtl, tb, sim, syn, or log) with CAD.
