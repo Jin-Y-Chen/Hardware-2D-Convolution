@@ -62,7 +62,7 @@ module control #(
     always_ff @(posedge clk) begin
         if (reset)
             state <= initiate;
-        else if (en || memory_fetched)
+        else if (en)
             state <= next_state;
     end 
     
@@ -121,11 +121,11 @@ module control #(
         init_acc = 0;
         input_valid = 0;
         y_valid = 0;
-        set_X_addr = 0;
-        memory_fetched = 0;
-        X_next_addr = X_read_addr; // next element within the same kernel row
+        set_X_addr = 0;        
         reset_W_addr = 0;
         reset_X_addr = 0;
+        memory_fetched = 0;
+        X_next_addr = X_read_addr; // next element within the same kernel row
         move_window = by_step;
         next_state = state;
         case (state)

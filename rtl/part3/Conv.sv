@@ -23,7 +23,7 @@ module Conv #(
     input OUTPUT_TREADY
 );
     // interconnects (input_mems -> mac_pipe)
-    logic input_loaded, memory_fetched, stall_bar, input_valid, y_valid;
+    logic input_loaded, memory_fetched, compute_finished, stall_bar, input_valid, y_valid;
     logic init_acc;
     logic [W_ADDR_BITS-1:0] W_read_addr;
     logic [X_ADDR_BITS-1:0] X_read_addr;
@@ -69,31 +69,33 @@ module Conv #(
         .W_data(W_data), 
 
         //intermediate input
-        .compute_finished(memory_fetched),
+        .compute_finished(compute_finished),
         .X_read_addr(X_read_addr), //drive X_data
         .W_read_addr(W_read_addr) //drive W_data
     );
 
+    // input_valid1 waits for registered X_data/W_data. The two MAC stages
+    // then put the finished sum on y_valid3, and B loads on that same cycle.
+    logic input_valid1, init_acc1, init_acc2;
     logic y_valid1, y_valid2, y_valid3;
-    logic data_valid, init_acc_d, init_acc_d2;
 
-    // X_data/W_data are registered, so the MAC valid is one cycle later.
-    // init_acc waits two cycles: the last product is added, then B loads.
     always_ff @(posedge clk) begin
         if (reset) begin
+            input_valid1 <= 0;
+            init_acc1 <= 0;
+            init_acc2 <= 0;
             y_valid1 <= 0;
             y_valid2 <= 0;
             y_valid3 <= 0;
-            data_valid <= 0;
-            init_acc_d <= 0;
-            init_acc_d2 <= 0;
+            compute_finished <= 0;
         end else begin
+            compute_finished <= memory_fetched;
+            input_valid1 <= input_valid;
+            init_acc1 <= init_acc;
+            init_acc2 <= init_acc1;
             y_valid1 <= y_valid;
             y_valid2 <= y_valid1;
             y_valid3 <= y_valid2;
-            data_valid <= input_valid;
-            init_acc_d <= init_acc;
-            init_acc_d2 <= init_acc_d;
         end
     end
 
@@ -103,7 +105,7 @@ module Conv #(
         //shared control
         .clk(clk), .reset(reset),
         //intermediate input
-        .init_acc(init_acc_d2), .input_valid(data_valid), .Q(Q),
+        .init_acc(init_acc2), .input_valid(input_valid1), .Q(Q),
         .input0(X_data), .input1(W_data), .init_value(B),
         //intermediate ouput
         .out(out)
@@ -118,7 +120,7 @@ module Conv #(
         .clk(clk), .reset(reset),
         //intermediate input
         .IN_AXIS_TDATA(out),
-        .IN_AXIS_TVALID(y_valid3),          // finished sum, before B reloads
+        .IN_AXIS_TVALID(y_valid3),          // finished sum, aligned with out
 
         //intermediate output
         .IN_AXIS_TREADY(stall_bar),             //stall is asserted low or IN_AXIS_TREADY = stall_bar
