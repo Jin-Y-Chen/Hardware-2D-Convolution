@@ -18,9 +18,6 @@ module control #(
     output logic [W_ADDR_BITS-1:0] W_read_addr,
     output logic input_valid, y_valid, memory_fetched
 );
-
-    // Returning to initiate is the idle cycle between windows. new_window
-    // distinguishes that idle cycle from the first cycle of an image.
     enum logic [1:0] {
         initiate,
         iterate
@@ -39,7 +36,7 @@ module control #(
     //logic [C-1:0] C_ptr, C_ptr_reg;
     logic [X_ADDR_BITS-1:0] X_next_addr, this_array, next_array, this_slice, next_slice;
     logic [W_ADDR_BITS-1:0] W_next_addr;
-    logic set_X_addr, reset_W_addr, reset_X_addr, new_window;
+    logic set_X_addr, reset_W_addr, reset_X_addr, new_matrix;
 
     counter #(
         .SIZE(W_ADDR_BITS)
@@ -74,42 +71,44 @@ module control #(
             next_slice <= 0;
             next_array <= 0;
             delta_R <= 0;
-            new_window <= 1;
+            new_matrix <= 1;
         end
-        // Geometry is captured once per image. A later initiate is only the bias cycle.
-        else if ((state == initiate) && en && new_window) begin
+        // pointer initialization on C-by-R new_matrix
+        else if ((state == initiate) && en && new_matrix) begin
             next_array <= C;
             delta_R <= S*C;
             next_slice <= S;
             next_R_ptr <= S;
-            new_window <= 0;
+            new_matrix <= 0;
         end
-        else if ((state == iterate) && stall_bar) begin
+
+        // iterate until done or next C-by-R new_maxtrix 
+        else if ((state == iterate)) begin
 
             case (move_window)
-                by_step : begin
+                by_step : begin                 // do nothing counter perform steping
                 end
                 hold : begin
-                    this_slice <= X_next_addr;
+                    this_slice <= X_next_addr;  // determine X_read_addr of all head-slice (this_slice) address in a w-window
                 end
-                by_column : begin
+                by_column : begin               // stride window by shifting to next_slice
                     this_slice <= X_next_addr;
                     next_slice <= next_slice + S;
                 end
-                by_row : begin  // i.e. set new pivot to X_next_addr,
+                by_row : begin                  // set window to new pivot = X_next_addr,
                     this_array <= X_next_addr;
                     next_array <= X_next_addr + C;
                     this_slice <= X_next_addr;
                     next_slice <= X_next_addr + S;
                     next_R_ptr <= next_R_ptr + S;
                 end
-                default : begin // reset all pointer to the first element
+                default : begin                 // reset all pointer to the first element in the matrix 
                     this_slice <= 0;
                     next_slice <= S;
                     this_array <= 0;
                     next_array <= C;
                     next_R_ptr <= 0;
-                    new_window <= 1;
+                    new_matrix <= 1;
                 end
             endcase
 
@@ -125,86 +124,51 @@ module control #(
         reset_W_addr = 0;
         reset_X_addr = 0;
         memory_fetched = 0;
-        X_next_addr = X_read_addr; // next element within the same kernel row
-        move_window = by_step;
-        next_state = state;
+        X_next_addr = X_read_addr; // default counter loopback, next count relative to current count
+        move_window = by_step;     // default; no pointer operation
+        next_state = state;        // default next_state is current state
         case (state)
             initiate : begin
-                // Load B only. The first tap is read on the following iterate,
-                // once X_data/W_data match the address.
+                // first tap of the image: load B and present X[0], W[0]
                 if (en && stall_bar) begin
                     init_acc = 1;
                     next_state = iterate;
                 end
             end
-
-            iterate : begin
-                // stall_bar low: this tap was not accepted, so X and W stay put.
-                if (stall_bar) begin
-                    input_valid = 1;
-                    if (W_read_addr == K*K-1) begin
-                        y_valid = 1;
-                        reset_W_addr = 1;
-                        set_X_addr = 1;
-                        if (next_slice + K <= next_array) begin
-                            move_window = by_column;
-                            X_next_addr = next_slice;
-                        end
-                        else if (next_R_ptr + K <= R) begin
-                            move_window = by_row;
-                            X_next_addr = this_array + delta_R;
-                        end
-                        else begin
-                            move_window = to_start;
-                            reset_X_addr = 1;
-                            memory_fetched = 1;
-                        end
-                        next_state = initiate;
+            
+            iterate : begin     
+                //biased value load and counter enable on the next cycle; count = 0 on the current cycle
+                input_valid = 1;
+                // complete the last element of the w-window, move to next w-window
+                if (W_read_addr == K*K-1) begin
+                    y_valid = 1; //valid output
+                    reset_W_addr = 1;
+                    set_X_addr = 1;
+                    // next w-window on the same row;
+                    if (next_slice + K <= next_array) begin
+                        move_window = by_column;
+                        X_next_addr = next_slice;
                     end
-                    else if (X_read_addr == this_slice + K - 1) begin
-                        move_window = hold;
-                        set_X_addr = 1;
-                        X_next_addr = this_slice + C;
+                    // next w-window on the next row;
+                    else if (next_R_ptr + K <= R) begin
+                        move_window = by_row;
+                        X_next_addr = this_array + delta_R;
                     end
+                    // No next w-window; next w-window doesn't fit along the same row or next row
+                    else begin
+                        move_window = to_start;
+                        reset_X_addr = 1;
+                        memory_fetched = 1;
+                    end
+                    next_state = initiate; //reload weight on next w-window
+                end
+                // complete the last element of w-slice, move to next w-slice
+                else if (X_read_addr == this_slice + K - 1) begin
+                    move_window = hold;
+                    set_X_addr = 1;
+                    X_next_addr = this_slice + C;
                 end
             end
         endcase
     end 
-
 endmodule
-
- 
-
-/*Then, your new Part 3 control logic will be responsible for reading the input data from the input
-memories using the X_read_addr and W_read_addr signals and feeding the values of 𝑋, 𝑊, and
-𝐵 into the MAC module.
-*/
-
-//read address counter
-//row-major order, so you will need to map accesses like X[r*S+i][c*S+j] and W[i][j] to addresses.
-
-
-//Your logic will need to control the MAC module’s control inputs (init_acc, init_value, Q, and input_valid).
-
-/*interact with the FIFO’s IN_AXIS_TVALID and IN_AXIS_TREADY signals appropriately. If the FIFO’s
-IN_AXIS_TREADY == 0, then the FIFO is full, and you cannot write data to it. In this case, your logic
-would need to stall until the recently computed MAC output can be stored in the FIFO
-
-*/
-
-/*After your system is done computing the full convolution, the control logic should set
-compute_finished (the input signal to the memory module) to 1 for one clock cycle. This will cause
-the input_mems module to start reading in new inputs again, and the whole process can repeat.
-*/
-
-
-    /*
-
-    X[r*S+1][c*S+j] = X[] (h, s), where h is 
-    just a simple counter that iterated through the whole window of the 
-    K by K of W-matrix. The simple counter is also the logic 
-    for address elements by W[j][i].
-
-    S is constant during this phase, but additional logic has to
-    direct what S should drived (row or colume). 
-    */

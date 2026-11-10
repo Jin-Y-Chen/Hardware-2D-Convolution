@@ -497,18 +497,18 @@ The Energy trend as the integeral of the linear power plot in Figure~\ref{fig:pi
 
 \subsection{Latency and Throughput}
 
-Latency is the time it takes for one unit input to be computed. This is the total time by the number of cycles an input must pass through the design. In case of the pipelined design, each input take two cycles to pass through two registers, resulting in a latency of two periods. The unpipelined design takes one cycle to for the input topass through the design, resulting in a latency of one period. Then latency $L$ is
+Latency is the time it takes for one unit input to be computed. This is the total time by the number of cycles an input must pass through the design. In case of the pipelined design, each input take two cycles to pass through two registers, resulting in a latency of two periods. The unpipelined design takes one cycle to for the input to pass through the design, resulting in a latency of one period. Then latency $L$ is
 \[
 L = N_\mathrm{cyc}\,t,
 \]
 where $N_\mathrm{cyc}$ is the number of cycles and $t$ is the period for every cycle.
 
-Throughput is the number of outputs computed per unit time. If we disregard the fill time or the latency of the first input in the pipeline design, both the pipelined and unpipelined design will produce one output per cycle. Then throughput $F$ is just the inverse of the period or the frequency of the design given by
+Throughput is the number of outputs computed per unit time. If we disregard the fill time or the latency of the first input in the pipeline design, both the pipelined and unpipelined design will produce one output per cycle. Then throughput $F$ is just the inverse of the clock period of the design given by
 
 \[
 F = \frac{1}{t},
 \]
-Where $F$ can also be interpreted as the amount of MAC operations per second. 
+Where $F$ can also be interpreted as the amount of outputs per second or frequency of the clock. 
 
 Table~\ref{tab:lat-tp} shows the latency and throughput, defined above, along with the area and power of the pipelined and unpipelined design at the maximum MET timing constraint. 
 
@@ -535,7 +535,7 @@ Table~\ref{tab:lat-tp} shows the latency and throughput, defined above, along wi
     \label{tab:lat-tp}
 \end{table}
 
-Compared to the unpipelined design, the pipelined design has a higher latency due to the additional pipeline cycle, but greater throughput by meeting the timing constraint at a higher frequency. 
+Compared to the unpipelined design, the pipelined design has a higher latency due to the additional pipeline cycle, but greater throughput by meeting a lower timing constraint for higher frequency of outputs. 
 
 \subsection{Design Trade-offs}
 
