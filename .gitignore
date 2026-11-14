@@ -9,6 +9,12 @@
 !/sim/
 !/syn/
 
+# Same editor settings on Windows and Linux. Not sent to CAD.
+!/.vscode/
+/.vscode/*
+!/.vscode/settings.json
+!/.vscode/pdflatex.py
+
 # LaTeX build byproducts
 *.aux
 *.out

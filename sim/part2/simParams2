@@ -1,0 +1,45 @@
+#!/usr/bin/bash
+
+# Compile input_mems and its testbench, then simulate with xrun.
+# usage: ./simParams2 [WIDTH] [R] [C] [K] [TVALID_PROB] [STAGE] [GUI]
+#    TVALID_PROB = 0 makes the testbench randomize AXIS_TVALID.
+#    STAGE is 1, 2, or 3. Stage 3 is the complete test.
+#    GUI 0 runs in the console. GUI 1 opens Xcelium.
+# example:
+#        ./simParams2 16 7 6 5 0 3 0
+# GUI example (background it):
+#        ./simParams2 16 7 6 5 0 3 1 &
+
+if [ $# -ne 7 ]; then
+    echo "ERROR: incorrect number of parameters given."
+    echo "Usage: ./simParams2 [WIDTH] [R] [C] [K] [TVALID_PROB] [STAGE] [GUI]"
+    exit 1
+fi
+
+# This script lives in sim/part2. The DUT and testbench are not in this directory.
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
+cd "$HERE"
+
+# Defines for the testbench `include. The DUT imports package param, written below.
+bash "$HERE/genParams2" "$1" "$2" "$3" "$4" "$5" "$6" || exit 1
+cat > "$HERE/param_pkg.sv" << EOF
+package param;
+    localparam int WIDTH = $1;
+    localparam int R = $2;
+    localparam int C = $3;
+    localparam int K = $4;
+endpackage
+EOF
+
+# -64bit is Questa -64. -access +r is +acc. -svseed is -sv_seed.
+# One xrun command compiles and runs. -incdir finds the included params.sv.
+cmd=(xrun -64bit -access +r -svseed random -clean -top input_mems_tb
+    -incdir "$HERE"
+    "$HERE/param_pkg.sv"
+    "$ROOT/rtl/part2/input_mems.sv"
+    "$ROOT/tb/part2/input_mems_tb.sv")
+if [[ $7 -eq 1 ]]; then
+    cmd+=(-gui)
+fi
+"${cmd[@]}"

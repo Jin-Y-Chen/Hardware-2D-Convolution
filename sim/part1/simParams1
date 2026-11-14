@@ -1,0 +1,40 @@
+#!/usr/bin/bash
+
+# Compile mac / mac_pipe and mac_tb, then simulate with xrun.
+# usage: ./simParams1 [WIDTH] [ACCW] [PIPELINED] [GUI]
+#      - WIDTH is the bitwidth of the MAC inputs and of the MAC output
+#        (2 <= WIDTH < 32)
+#      - ACCW is the bitwidth of the MAC's accumulator
+#        (ACCW must be >= 2*WIDTH and <= 80)
+#    GUI 0 runs in the console. GUI 1 opens Xcelium.
+# example:
+#        ./simParams1 8 24 0 0
+# GUI example (background it):
+#        ./simParams1 8 24 0 1 &
+
+if [ $# -ne 4 ]; then
+    echo "ERROR: incorrect number of parameters given."
+    echo "Usage: ./simParams1 [WIDTH] [ACCW] [PIPELINED] [GUI]"
+    exit 1
+fi
+
+# This script lives in sim/part1. The DUT and testbench are not in this directory.
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
+cd "$HERE"
+
+# params.sv holds the defines and package param. xrun compiles that file.
+bash "$HERE/genParams1" "$1" "$2" "$3" || exit 1
+
+# -64bit is Questa -64. -access +r is +acc. -svseed is -sv_seed.
+# One xrun command compiles and runs. -top is mac_tb because mac and mac_pipe are also modules.
+cmd=(xrun -64bit -access +r -svseed random -clean -top mac_tb
+    "$HERE/params.sv"
+    "$ROOT/rtl/part1/mac.sv"
+    "$ROOT/rtl/part1/mac_pipe.sv"
+    "$ROOT/tb/part1/mac_tb.sv"
+    "$ROOT/tb/part1/mac_tb.c")
+if [[ $4 -eq 1 ]]; then
+    cmd+=(-gui)
+fi
+"${cmd[@]}"

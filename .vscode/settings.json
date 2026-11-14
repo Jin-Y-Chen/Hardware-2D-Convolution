@@ -1,0 +1,36 @@
+{
+  "files.eol": "\n",
+  "files.associations": {
+    "ssh_link": "shellscript",
+    "ssh_vlog": "shellscript",
+    "ssh_vsim": "shellscript",
+    "ssh_vsyn": "shellscript",
+    "ssh_plot": "shellscript",
+    "csv_data": "shellscript",
+    "csv_plot": "shellscript"
+  },
+  "[shellscript]": {
+    "files.eol": "\n"
+  },
+  "latex-workshop.latex.recipe.default": "pdflatex",
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "pdflatex",
+      "tools": ["pdflatex", "pdflatex"]
+    }
+  ],
+  "latex-workshop.latex.tools": [
+    {
+      "name": "pdflatex",
+      "command": "python3",
+      "args": [
+        "%WORKSPACE_FOLDER%/.vscode/pdflatex.py",
+        "-synctex=1",
+        "-interaction=nonstopmode",
+        "-file-line-error",
+        "-shell-escape",
+        "%DOC%"
+      ]
+    }
+  ]
+}
