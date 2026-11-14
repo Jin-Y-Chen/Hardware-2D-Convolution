@@ -1,6 +1,16 @@
-# LaTeX build byproducts (not source)
+# link pushes rtl/, tb/, sim/, and syn/ to CAD. Everything else stays here.
+
+/*
+!.gitignore
+!.gitattributes
+
+!/rtl/
+!/tb/
+!/sim/
+!/syn/
+
+# LaTeX build byproducts
 *.aux
-*.log
 *.out
 *.toc
 *.synctex.gz
@@ -11,11 +21,27 @@
 *.vrb
 svg-inkscape/
 
-# Local simulation and synthesis trees
-sim/
-syn/
-
-# Cadence xrun / SimVision byproducts
+# Same names link's rsync refuses to copy
+work/
+work_synth/
+*.wlf
+transcript
+modelsim.ini
+vsim.dbg
+vlog_mac.log
+vsim_mac.log
+dc_mac.log
+command.log
+default.svf
+*.svf
+user.tcl
+*.vstf
+wlft*
+_info
+_vmake
+_lib*
+.nfs*
+*.do
 xcelium.d/
 INCA_libs/
 .simvision/
