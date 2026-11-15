@@ -1,0 +1,61 @@
+# link pushes rtl/, tb/, sim/, and syn/. Everything else stays local.
+
+# Root
+/LICENSE
+/README.md
+/.cursor/
+
+# .vscode/
+/.vscode/*
+!/.vscode/settings.json
+!/.vscode/pdflatex.py
+
+# constraint/
+/constraint/
+
+# data/
+/data/
+
+# doc/
+/doc/
+
+# log/
+/log/
+
+# scr/
+/scr/
+
+# rtl/, tb/, sim/, syn/
+# Names link's rsync skips inside those trees.
+work/
+work_synth/
+*.wlf
+transcript
+modelsim.ini
+vsim.dbg
+vlog_mac.log
+vsim_mac.log
+dc_mac.log
+command.log
+default.svf
+*.svf
+user.tcl
+*.vstf
+wlft*
+_info
+_vmake
+_lib*
+.nfs*
+*.do
+xcelium.d/
+INCA_libs/
+.simvision/
+waves.shm/
+*.shm
+xrun.log
+xrun.history
+xrun.key
+irun.log
+irun.history
+irun.key
+*.svwf
