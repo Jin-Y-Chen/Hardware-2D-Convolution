@@ -8,3 +8,4 @@ sim/part1/genParams1 text eol=lf
 sim/part1/simParams1 text eol=lf
 sim/part2/genParams2 text eol=lf
 sim/part2/simParams2 text eol=lf
+sim/part3/simParams3_xrun text eol=lf

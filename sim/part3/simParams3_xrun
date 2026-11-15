@@ -1,0 +1,40 @@
+#!/usr/bin/bash
+
+# Compile Conv and Conv_tb with xrun. Sources stay in rtl/ and tb/.
+# usage: ./simParams3_xrun [WIDTH] [R] [C] [K] [TVALID_PROB] [TREADY_PROB] [GUI]
+#    TVALID_PROB or TREADY_PROB of 0 makes the testbench randomize that rate.
+#    GUI 0 runs in the console. GUI 1 opens Xcelium.
+# example:
+#        ./simParams3_xrun 12 8 8 5 0 0 0
+# GUI example (background it):
+#        ./simParams3_xrun 12 8 8 5 0 0 1 &
+
+if [ $# -ne 7 ]; then
+    echo "ERROR: incorrect number of parameters given."
+    echo "Usage: ./simParams3_xrun [WIDTH] [R] [C] [K] [TVALID_PROB] [TREADY_PROB] [GUI]"
+    exit 1
+fi
+
+# This script lives in sim/part3. The DUT and testbench are not in this directory.
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
+cd "$HERE"
+
+# params.sv is included by Conv_tb.sv. genParams3 writes it here.
+bash "$HERE/genParams3" "$1" "$2" "$3" "$4" "$5" "$6" || exit 1
+
+# -64bit is Questa -64. -access +r is +acc. -svseed is -sv_seed.
+# Conv instantiates input_mems and mac_pipe, which live in part2 and part1.
+# -incdir is this directory so `include "params.sv" resolves here.
+cmd=(xrun -64bit -access +r -svseed random -clean -top Conv_tb -incdir "$HERE"
+    "$ROOT/rtl/part3/fifo_out.sv"
+    "$ROOT/rtl/part2/input_mems.sv"
+    "$ROOT/rtl/part1/mac_pipe.sv"
+    "$ROOT/rtl/part3/control.sv"
+    "$ROOT/rtl/part3/Conv.sv"
+    "$ROOT/tb/part3/Conv_tb.sv"
+    "$ROOT/tb/part3/test_helper.c")
+if [[ $7 -eq 1 ]]; then
+    cmd+=(-gui)
+fi
+"${cmd[@]}"

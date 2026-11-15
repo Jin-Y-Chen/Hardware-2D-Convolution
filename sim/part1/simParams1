@@ -26,8 +26,9 @@ cd "$HERE"
 # params.sv holds the defines and package param. xrun compiles that file.
 bash "$HERE/genParams1" "$1" "$2" "$3" || exit 1
 
+# Compiles the part1 sources in rtl/ and tb/.
 # -64bit is Questa -64. -access +r is +acc. -svseed is -sv_seed.
-# One xrun command compiles and runs. -top is mac_tb because mac and mac_pipe are also modules.
+# -top is mac_tb because mac and mac_pipe are also modules.
 cmd=(xrun -64bit -access +r -svseed random -clean -top mac_tb
     "$HERE/params.sv"
     "$ROOT/rtl/part1/mac.sv"

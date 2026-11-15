@@ -10,8 +10,8 @@
 //      [options]:
 //       - If you want to run in GUI mode, remove -c
 
-// simParams1 compiles sim/part1/params.sv first, which defines WIDTHVAL, ACCWVAL,
-// and PIPELINEDVAL. vsim does not, and then those values come from rtl/params.sv.
+// sim/part1/params.sv defines WIDTHVAL, ACCWVAL, and PIPELINEDVAL, and package params.
+// vlog writes that file from constraint/all_config.json and compiles it first.
 
 // Please see the project description for a high-level description of this testbench and how to run it. Comments are also included throughout to help understand how the testbench works.
 

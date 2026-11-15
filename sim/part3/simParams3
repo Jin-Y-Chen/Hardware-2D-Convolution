@@ -1,50 +1,35 @@
 #!/usr/bin/bash
 
-# Generate params.sv, compile Conv and Conv_tb, and simulate with xrun.
+# script to generate the params.sv file based on the command line parameters,
+# compile the code and testbench, and run simulation.
 # usage: ./simParams3 [WIDTH] [R] [C] [K] [TVALID_PROB] [TREADY_PROB] [GUI]
-#    TVALID_PROB or TREADY_PROB = 0 makes the testbench randomize that signal.
-#    GUI 0 runs in the console. GUI 1 opens Xcelium.
-# example:
+#    where you will replace [*] with the desired value of those parameters.
+#    Remember that if TVALID_PROB/TREADY_PROB = 0, the testbench will randomize it.
+
+#    if [GUI] is 0, the simulation will run at the command line. If [GUI] is 1, it will
+#    run QuestaSim in GUI mode
+
+# example: for WIDTH=12, R=8, C=8, K=5 with random TREADY/TVALID, simulating at the command line only, run:
 #        ./simParams3 12 8 8 5 0 0 0
-# GUI example (background it):
+
+# If you want to run in GUI mode, you should run with & at the end, like
 #        ./simParams3 12 8 8 5 0 0 1 &
+
+# Compiles the part3 sources in rtl/ and tb/. Conv also uses input_mems and mac_pipe.
 
 if [ $# -ne 7 ]; then
     echo "ERROR: incorrect number of parameters given."
     echo "Usage: ./simParams3 [WIDTH] [R] [C] [K] [TVALID_PROB] [TREADY_PROB] [GUI]"
     echo "See comments in simParams3 file for more information"
-    exit 1
+else
+    ./genParams3 $1 $2 $3 $4 $5 $6
+    vlog -64 +acc +incdir+. \
+        ../../rtl/part3/fifo_out.sv ../../rtl/part2/input_mems.sv ../../rtl/part1/mac_pipe.sv \
+        ../../rtl/part3/control.sv ../../rtl/part3/Conv.sv \
+        ../../tb/part3/Conv_tb.sv ../../tb/part3/test_helper.c
+    if [[ $7 -eq 0 ]]; then
+        vsim -64 -sv_seed random -c Conv_tb -do "run -all; quit"
+    else
+        vsim -64 -sv_seed random Conv_tb
+    fi
 fi
-
-HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$HERE/../.." && pwd)"
-cd "$HERE"
-
-bash "$HERE/genParams3" "$1" "$2" "$3" "$4" "$5" "$6" || exit 1
-# Conv and mac_pipe read package param. The testbench includes the defines file.
-cat > "$HERE/param_pkg.sv" << EOF
-package param;
-    localparam int WIDTH = $1;
-    localparam int R = $2;
-    localparam int C = $3;
-    localparam int K = $4;
-    localparam int ACCW = \$clog2(K*K*(128'd1 << (2*WIDTH-2)) + (1 << (WIDTH-1))) + 1;
-endpackage
-EOF
-
-# -64bit is Questa -64. -access +r is +acc. -svseed is -sv_seed.
-# One xrun command compiles and runs.
-cmd=(xrun -64bit -access +r -svseed 507 -clean -top Conv_tb
-    -incdir "$HERE"
-    "$HERE/param_pkg.sv"
-    "$ROOT/rtl/part3/fifo_out.sv"
-    "$ROOT/rtl/part3/control.sv"
-    "$ROOT/rtl/part3/input_mems.sv"
-    "$ROOT/rtl/part3/mac_pipe.sv"
-    "$ROOT/rtl/part3/Conv.sv"
-    "$ROOT/tb/part3/Conv_tb.sv"
-    "$ROOT/tb/part3/test_helper.c")
-if [[ $7 -eq 1 ]]; then
-    cmd+=(-gui)
-fi
-"${cmd[@]}"

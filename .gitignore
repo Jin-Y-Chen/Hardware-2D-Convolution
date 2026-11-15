@@ -1,33 +1,32 @@
-# link pushes rtl/, tb/, sim/, and syn/ to CAD. Everything else stays here.
+# link pushes rtl/, tb/, sim/, and syn/. Everything else stays local.
 
-/*
-!.gitignore
-!.gitattributes
+# Root
+/LICENSE
+/README.md
+/.cursor/
 
-!/rtl/
-!/tb/
-!/sim/
-!/syn/
-
-# Same editor settings on Windows and Linux. Not sent to CAD.
-!/.vscode/
+# .vscode/
 /.vscode/*
 !/.vscode/settings.json
 !/.vscode/pdflatex.py
 
-# LaTeX build byproducts
-*.aux
-*.out
-*.toc
-*.synctex.gz
-*.fls
-*.fdb_latexmk
-*.nav
-*.snm
-*.vrb
-svg-inkscape/
+# constraint/
+/constraint/
 
-# Same names link's rsync refuses to copy
+# data/
+/data/
+
+# doc/
+/doc/
+
+# log/
+/log/
+
+# scr/
+/scr/
+
+# rtl/, tb/, sim/, syn/
+# Names link's rsync skips inside those trees.
 work/
 work_synth/
 *.wlf

@@ -2,12 +2,9 @@
 # Setup: vsyn <top> fills these for the current top.
 # SRC_FILE paths are relative to syn/.
 set TOP_MOD_NAME "input_mems";
-set SRC_FILE [list "../rtl/param.sv" "../rtl/part2/input_mems.sv"];
+set SRC_FILE [list "../sim/part2/params.sv" "../rtl/part2/input_mems.sv"];
 # Multiple sources: set SRC_FILE [list "file1.sv" "file2.sv"];
 ###############################################
-
-# Clock, reset, and period. vsyn fills these from constraint/all_config.json.
-# IO_DELAY stays in this file.
 set CLK_NAME   "clk";
 set RST_NAME   "reset";
 set CLK_PERIOD 0.74;
@@ -30,7 +27,7 @@ set fsm_enable_state_minimization "true";
 
 define_design_lib WORK -path work_synth
 analyze $SRC_FILE -format sverilog
-# WIDTH / ACCW default to the param package (rtl/param.sv)
+# sim/partN/params.sv in SRC_FILE carries the values from constraint/all_config.json.
 elaborate -work WORK $TOP_MOD_NAME
 
 ###### CLOCKS AND PORTS #######

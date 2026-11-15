@@ -110,7 +110,7 @@ module control #(
                     next_R_ptr <= 0;
                     new_matrix <= 1;
                 end
-            endcase
+            endcase//
 
         end 
         
