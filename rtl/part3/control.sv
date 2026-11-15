@@ -112,7 +112,7 @@ module control #(
                 end
             endcase
 
-        end 
+        end //
         
     end 
 
