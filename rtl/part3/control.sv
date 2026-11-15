@@ -19,23 +19,24 @@ module control #(
     output logic input_valid, y_valid, memory_fetched
 );
     enum logic [1:0] {
-        initiate,
-        iterate
+        idle,
+        next_window,
+        this_window
     } state, next_state;
 
-    enum logic [2:0] {
-        by_step,
-        hold,
-        by_column,
-        by_row,
-        to_start
-    } next_window;
+    enum logic [1:0] {
+        slice_down,         //take the slice directly down the current
+        stride_slice,       //stride to the next slice (within C)
+        stride_array,       //stride to the next array (row major with R)
+        start               //start control
+    } window_op;
 
     logic [S_BITS+C-1:0] delta_R;
     logic [R-1:0] next_R_ptr;
+    logic [C-1:0] next_C_ptr;
     //logic [C-1:0] C_ptr, C_ptr_reg;
-    logic [X_ADDR_BITS-1:0] X_next_addr, next_addr, this_array, next_array, this_slice, next_slice;
-    logic [W_ADDR_BITS-1:0] W_next_addr
+    logic [X_ADDR_BITS-1:0] X_next_addr, this_array, this_slice, next_window_addr, next_slice_addr;
+    logic [W_ADDR_BITS-1:0] W_next_addr;
     logic set_X_addr, reset_W_addr, reset_X_addr, new_matrix;
 
     counter #(
@@ -58,7 +59,7 @@ module control #(
     
     always_ff @(posedge clk) begin
         if (reset)
-            state <= initiate;
+            state <= idle;
         else if (en)
             state <= next_state;
     end 
@@ -74,7 +75,7 @@ module control #(
             delta_R <= 0;
             //new_matrix <= 1;
         end
-        else if (state == initiate) begin 
+        else if (state == idle) begin 
             next_R_ptr <= S; //to comparte if next window will fit on the next row
             next_C_ptr <= S;
             delta_R <= S*C;
@@ -82,18 +83,18 @@ module control #(
         end 
 
         else if ((state == next_window) && en) begin
-            if (window_move == to_start) begin
+            if (window_op == start) begin
                 next_window_addr <= (S + K > C) ? delta_R : S; //next window can be determine now with delta_R
                 this_slice <= 0;
                 next_C_ptr <= S; 
                 next_R_ptr <= S; 
             end 
-            else if (window_move == by_column) begin
+            else if (window_op == stride_slice) begin
                 this_slice <= next_window_addr;                 //
                 next_window_addr <= next_window_addr + S;       //next address assignment by addition of S
                 next_C_ptr <= next_C_ptr + S;                   //stride column pointer 
             end 
-            else if (window_move == by_row) begin
+            else if (window_op == stride_array) begin
                 this_array <= next_window_addr;
                 next_window_addr <= this_array + delta_R;       //next address assignment by multiple of C * S
                 next_R_ptr <= next_R_ptr + S;                   //stride Row pointer 
@@ -104,7 +105,7 @@ module control #(
                 
             end 
         end 
-        else if ((state == this_window) && window_move == by_none) begin
+        else if ((state == this_window) && window_op == slice_down) begin
             this_slice <= next_slice_addr;              //update this slice before comb compare 
             next_slice_addr <= next_slice_addr + C;     //update the next slice for x_next_addr
         end 
@@ -152,9 +153,9 @@ module control #(
         reset_X_addr = 0;
         memory_fetched = 0;
         X_next_addr = X_read_addr; // default counter loopback, next count relative to current count
-        window_move = by_step;     // default; no pointer operation
+        window_op = start;     // default; no pointer operation
         case (state)
-            initiate : begin
+            idle : begin
                 // first tap of the image: load B and present X[0], W[0]
                 if (en && stall_bar) begin
                     init_acc = 1;
@@ -167,15 +168,17 @@ module control #(
 
                 // next w-window on the same row;
                 if (next_C_ptr + K <= C) begin
-                    window_move = by_column; 
+                    window_op = stride_slice; 
                 end
                 // next w-window on the next row;
                 else if (next_R_ptr + K <= R) begin
-                    window_move = by_row;
+                    window_op = stride_array;
                 end
                 // No next w-window; next w-window doesn't fit along the same row or next row
                 else begin
-                    window_move = to_start;
+                    window_op = start;
+                    init_acc = 1;
+                    input_valid = 0;                    //stall counter for 1 cycle to load accumlator, since accum will prioritize intial load over accumulation
                 end
                 next_state <= this_window;
             end
@@ -189,11 +192,12 @@ module control #(
                     set_X_addr = 1;                     //require to set the X address counter an value with no incrementation on the next cycle
                     X_next_addr = next_window_addr;     //next window address value set to the X address counter
                     reset_W_addr = 1;                   //reset to the start count;
+                    reset_X_addr = 1;
                     memory_fetched = 1;
                 end 
                 // complete the last elemnt of a slice, move to next slice of the window
-                else (X_read_addr == this_slice + K - 1) begin
-                    window_move = by_none
+                else if (X_read_addr == (this_slice + K - 1)) begin
+                    window_op = slice_down;
                     set_X_addr = 1;                     //require to set the X address counter an value with no incrementation on the next cycle
                     X_next_addr = next_slice_addr;      //next window address value set to the X address counter
                 end 
