@@ -10,8 +10,9 @@
 //      [options]:
 //       - If you want to run in GUI mode, remove -c
 
-// sim/part1/params.sv defines WIDTHVAL, ACCWVAL, and PIPELINEDVAL, and package params.
-// vlog writes that file from constraint/all_config.json and compiles it first.
+// sim/part1/params.sv defines WIDTHVAL, ACCWVAL, and PIPELINEDVAL.
+// The simParams script writes that file from constraint/all_config.json.
+`include "params.sv"
 
 // Please see the project description for a high-level description of this testbench and how to run it. Comments are also included throughout to help understand how the testbench works.
 
@@ -91,15 +92,9 @@ endclass
 module mac_tb();
 
     parameter TESTS = 10000;             // the number of cycles of input to simulate
-`ifdef WIDTHVAL
     parameter WIDTH = `WIDTHVAL;            // the number of bits in the inputs and the output
     parameter ACCW  = `ACCWVAL;             // the number of bits in the accumulator
     parameter PIPELINED = `PIPELINEDVAL;    // 0 = mac, 1 = mac_pipe
-`else
-    parameter WIDTH = params::WIDTH;         // the number of bits in the inputs and the output
-    parameter ACCW  = params::ACCW;          // the number of bits in the accumulator
-    parameter PIPELINED = params::PIPELINED; // 0 = mac, 1 = mac_pipe (design.PIPELINED)
-`endif
 
     logic clk, reset;
     initial clk = 0;

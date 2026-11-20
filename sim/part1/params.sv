@@ -1,6 +1,6 @@
 // Generated from constraint/all_config.json. Edit that file, not this one.
-`define WIDTHVAL 10
-`define ACCWVAL 24
+`define WIDTHVAL 16
+`define ACCWVAL 48
 `define PIPELINEDVAL 1
 
 package params;

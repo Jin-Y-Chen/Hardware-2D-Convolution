@@ -1,0 +1,168 @@
+*** Message Type: info ***
+When: Sun Nov 15 05:39:49 EST 2026
+SimVision started.
+Version: TOOL:  simvision(64)   24.09-s001
+User: jinchen
+Host: lab40
+Platform: Linux/x86_64/4.18.0-553.34.1.el8_10.x86_64
+Started: Sun Nov 15 05:39:49 EST 2026
+Command: /usr/local/cds/XCELIUM2409/tools.lnx86/simvision/bin/64bit/simvision.exe -connect dc:lab40:52745 -64BIT -nocopyright
+Work Directory: /home/home5/jinchen/ese507/project/sim/part3
+ 
+*** Message Type: info ***
+When: Sun Nov 15 05:39:50 EST 2026
+Create browser window: "Design Browser 1"
+ 
+*** Message Type: info ***
+When: Sun Nov 15 05:39:55 EST 2026
+Create console window: "Console"
+ 
+*** Message Type: info ***
+When: Sun Nov 15 05:39:56 EST 2026
+Connect to Simulator
+      Design: worklib.Conv_tb:sv
+   Languages: verilog assertion
+   Simulator: XM-Sim
+     Version: TOOL:       xmsim(64)       24.09-s001
+        User: jinchen
+        Host: lab40
+Time Started: Sun Nov 15 05:39:47 EST 2026
+  Process ID: 171105
+   Directory: /home/home5/jinchen/ese507/project/sim/part3
+     Command: xrun -64bit -access +r -svseed random -clean -top Conv_tb -incdir /home/home5/jinchen/ese507/project/sim/part3 /home/home5/jinchen/ese507/project/rtl/part3/fifo_out.sv /home/home5/jinchen/ese507/project/rtl/part2/input_mems.sv /home/home5/jinchen/ese507/project/rtl/part1/mac_pipe.sv /home/home5/jinchen/ese507/project/rtl/part3/control.sv /home/home5/jinchen/ese507/project/rtl/part3/Conv.sv /home/home5/jinchen/ese507/project/tb/part3/Conv_tb.sv /home/home5/jinchen/ese507/project/tb/part3/test_helper.c -gui
+
+ 
+*** Message Type: info ***
+When: Sun Nov 15 05:39:56 EST 2026
+Create utility window: "Properties"
+ 
+*** Message Type: error ***
+When: Sun Nov 15 05:43:01 EST 2026
+bad window path name ".watchList0.menubar.windows.mb.menu"
+    while executing
+"tk_grab current .watchList0.menubar.windows.mb.menu"
+    invoked from within
+"::interp eval $interp tk_grab $args"
+    ("default" arm line 2)
+    invoked from within
+"switch -glob -- [lindex $args 0] {
+     set  {
+             set option "set"                
+               set window [lindex $args 1]
+            if { $window == "-global" } {
+              set option "gl..."
+    (body of command "grab" line 4)
+    invoked from within
+"grab current $menu"
+    (procedure "MenuUnpost" line 60)
+    invoked from within
+"MenuUnpost {}"
+    (procedure "tk::MbButtonUp" line 10)
+    invoked from within
+"tk::MbButtonUp .watchList0.menubar.windows.mb"
+    (command bound to event)
+ 
+*** Message Type: error ***
+When: Sun Nov 15 05:43:02 EST 2026
+bad window path name ".watchList0.menubar.windows.mb.menu"
+    while executing
+"tk_grab current .watchList0.menubar.windows.mb.menu"
+    invoked from within
+"::interp eval $interp tk_grab $args"
+    ("default" arm line 2)
+    invoked from within
+"switch -glob -- [lindex $args 0] {
+     set  {
+             set option "set"                
+               set window [lindex $args 1]
+            if { $window == "-global" } {
+              set option "gl..."
+    (body of command "grab" line 4)
+    invoked from within
+"grab current $menu"
+    (procedure "MenuUnpost" line 60)
+    invoked from within
+"MenuUnpost {}"
+    (procedure "tk::MbButtonUp" line 10)
+    invoked from within
+"tk::MbButtonUp .watchList0.menubar.windows.mb"
+    (command bound to event)
+ 
+*** Message Type: error ***
+When: Sun Nov 15 05:43:03 EST 2026
+bad window path name ".watchList0.menubar.windows.mb.menu"
+    while executing
+"tk_grab current .watchList0.menubar.windows.mb.menu"
+    invoked from within
+"::interp eval $interp tk_grab $args"
+    ("default" arm line 2)
+    invoked from within
+"switch -glob -- [lindex $args 0] {
+     set  {
+             set option "set"                
+               set window [lindex $args 1]
+            if { $window == "-global" } {
+              set option "gl..."
+    (body of command "grab" line 4)
+    invoked from within
+"grab current $menu"
+    (procedure "MenuUnpost" line 60)
+    invoked from within
+"MenuUnpost {}"
+    (procedure "tk::MbButtonUp" line 10)
+    invoked from within
+"tk::MbButtonUp .watchList0.menubar.windows.mb"
+    (command bound to event)
+ 
+*** Message Type: error ***
+When: Sun Nov 15 05:43:03 EST 2026
+bad window path name ".watchList0.menubar.windows.mb.menu"
+    while executing
+"tk_grab current .watchList0.menubar.windows.mb.menu"
+    invoked from within
+"::interp eval $interp tk_grab $args"
+    ("default" arm line 2)
+    invoked from within
+"switch -glob -- [lindex $args 0] {
+     set  {
+             set option "set"                
+               set window [lindex $args 1]
+            if { $window == "-global" } {
+              set option "gl..."
+    (body of command "grab" line 4)
+    invoked from within
+"grab current $menu"
+    (procedure "MenuUnpost" line 60)
+    invoked from within
+"MenuUnpost {}"
+    (procedure "tk::MbButtonUp" line 10)
+    invoked from within
+"tk::MbButtonUp .watchList0.menubar.windows.mb"
+    (command bound to event)
+ 
+*** Message Type: error ***
+When: Sun Nov 15 05:43:05 EST 2026
+bad window path name ".watchList0.menubar.windows.mb.menu"
+    while executing
+"tk_grab current .watchList0.menubar.windows.mb.menu"
+    invoked from within
+"::interp eval $interp tk_grab $args"
+    ("default" arm line 2)
+    invoked from within
+"switch -glob -- [lindex $args 0] {
+     set  {
+             set option "set"                
+               set window [lindex $args 1]
+            if { $window == "-global" } {
+              set option "gl..."
+    (body of command "grab" line 4)
+    invoked from within
+"grab current $menu"
+    (procedure "MenuUnpost" line 60)
+    invoked from within
+"MenuUnpost {}"
+    (procedure "tk::MbButtonUp" line 10)
+    invoked from within
+"tk::MbButtonUp .watchList0.menubar.windows.mb"
+    (command bound to event)
+ 

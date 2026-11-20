@@ -1,8 +1,11 @@
+//R = 9, C = 8, K = 5: 10000 Convs in     2641020 cycles = 264.102 Conv per second
+// vsyn writes these defines into sim/part3/params.sv from constraint/all_config.json.
+`include "../../sim/part3/params.sv"
 module Conv #(
-    parameter WIDTH = 16,
-    parameter R = 16,
-    parameter C = 16,
-    parameter K = 3,
+    parameter WIDTH = `WIDTHVAL,
+    parameter R = `RVAL,
+    parameter C = `CVAL,
+    parameter K = `KVAL,
     localparam X_ADDR_BITS = $clog2(R*C),
     localparam W_ADDR_BITS = $clog2(K*K),
     localparam MAXS = ((R > C) ? R : C) - K + 1,
@@ -34,22 +37,41 @@ module Conv #(
     // interconnects (mac_pipe -> FIFO_out)
     logic signed [WIDTH-1:0] out;
 
+    // input_valid1 waits for registered X_data/W_data. The two MAC stages
+    // then put the finished sum on y_valid3, and B loads on that same cycle.
+    logic input_valid2, input_valid1, init_acc1, init_acc2, init_acc3;
+    logic y_valid1, y_valid2, y_valid3, y_valid4;
+    logic signed [WIDTH-1:0] X_input0, W_input1, B1; 
+    logic [6:0] Q1;
+
     control #(
-        .WIDTH(WIDTH),
-        .R(R),
-        .C(C),
-        .K(K)
+        .WIDTH(WIDTH), .R(R), .C(C), .K(K)
     ) FSM_ctrl(
         .clk(clk), .reset(reset), 
         .en(input_loaded), .stall_bar(stall_bar),
         .S(S),
-        .init_acc(init_acc),    //state flag 
+        .init_acc(init_acc),    //initate flag 
         .X_read_addr(X_read_addr),
         .W_read_addr(W_read_addr),
         .input_valid(input_valid),
         .memory_fetched(memory_fetched),
         .y_valid(y_valid)
     );
+
+    always_ff @(posedge clk) begin //
+        if (reset) begin
+            init_acc1 <= 0;
+            input_valid1 <= 0;
+            y_valid1 <= 0;
+            compute_finished <= 1;
+        end 
+        else begin
+            init_acc1 <= init_acc;
+            compute_finished <= memory_fetched; //last entries from memory is fetch, next cycle new entry are read
+            input_valid1 <= input_valid;        //move with data read from memory to pre_accum register
+            y_valid1 <= y_valid;
+        end
+    end 
 
     input_mems #(
         .WIDTH(WIDTH), .R(R), .C(C), .K(K)
@@ -74,29 +96,27 @@ module Conv #(
         .W_read_addr(W_read_addr) //drive W_data
     );
 
-    // input_valid1 waits for registered X_data/W_data. The two MAC stages
-    // then put the finished sum on y_valid3, and B loads on that same cycle.
-    logic input_valid1, init_acc1, init_acc2;
-    logic y_valid1, y_valid2, y_valid3;
-
-    always_ff @(posedge clk) begin
+    always_ff @(posedge clk) begin //intermeidate register MEM/MAC
         if (reset) begin
-            input_valid1 <= 0;
-            init_acc1 <= 0;
             init_acc2 <= 0;
-            y_valid1 <= 0;
+            init_acc3 <= 0;
+            X_input0 <= 0;
+            W_input1 <= 0;
+            input_valid2 <= 0;
             y_valid2 <= 0;
-            y_valid3 <= 0;
-            compute_finished <= 0;
-        end else begin
-            compute_finished <= memory_fetched; //last entries from memory is fetch, next cycle new entry are read
-            input_valid1 <= input_valid;        //move with data read from memory to pre_accum register
-            init_acc1 <= init_acc;             
-            init_acc2 <= init_acc1;             //move with product-sum from pre_accum to accum_post register
-            y_valid1 <= y_valid;
+            B1 <= 0;
+            Q1 <= 0;
+        end 
+        else begin
+            init_acc2 <= init_acc1;
+            init_acc3 <= init_acc2;
+            X_input0 <= X_data;
+            W_input1 <= W_data;
+            B1 <= B;
+            Q1 <= Q;
+            input_valid2 <= input_valid1;
             y_valid2 <= y_valid1;
-            y_valid3 <= y_valid2;               //move with output from accum-post to fifo-out
-        end
+        end 
     end
 
     mac_pipe #(
@@ -105,13 +125,21 @@ module Conv #(
         //shared control
         .clk(clk), .reset(reset),
         //intermediate input
-        .init_acc(init_acc2), .input_valid(input_valid1), .Q(Q),
-        .input0(X_data), .input1(W_data), .init_value(B),
+        .init_acc(init_acc3), .input_valid(input_valid2), .Q(Q1),
+        .input0(X_input0), .input1(W_input1), .init_value(B1),
         //intermediate ouput
         .out(out)
     );
     
-   
+    always_ff @(posedge clk) begin
+        if (reset) begin
+            y_valid3 <= 0;
+            y_valid4 <= 0;
+        end else begin
+            y_valid3 <= y_valid2;
+            y_valid4 <= y_valid3;               //move with output from accum-post to fifo-out
+        end
+    end
 
     fifo_out #(
         .WIDTH(WIDTH), .DEPTH(DEPTH)
@@ -120,7 +148,7 @@ module Conv #(
         .clk(clk), .reset(reset),
         //intermediate input
         .IN_AXIS_TDATA(out),
-        .IN_AXIS_TVALID(y_valid3),          // finished sum, aligned with out
+        .IN_AXIS_TVALID(y_valid4),          // finished sum, aligned with out
 
         //intermediate output
         .IN_AXIS_TREADY(stall_bar),         // stall is asserted low or IN_AXIS_TREADY = stall_bar

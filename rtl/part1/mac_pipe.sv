@@ -22,7 +22,7 @@ module pre_accum_ff #(
         end else begin
             // valid must update every cycle so an idle cycle clears en
             out_valid <= in_valid;
-            //if (in_valid) begin
+            //if (in_valid) begin -- remove to reduce slack(MET) at 1.19ns
             out_product <= in_product;
             out_Q <= in_Q;
             //end

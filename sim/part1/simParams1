@@ -23,14 +23,14 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 cd "$HERE"
 
-# params.sv holds the defines and package param. xrun compiles that file.
+# mac_tb includes params.sv. genParams1 writes the defines here.
 bash "$HERE/genParams1" "$1" "$2" "$3" || exit 1
 
 # Compiles the part1 sources in rtl/ and tb/.
 # -64bit is Questa -64. -access +r is +acc. -svseed is -sv_seed.
 # -top is mac_tb because mac and mac_pipe are also modules.
-cmd=(xrun -64bit -access +r -svseed random -clean -top mac_tb
-    "$HERE/params.sv"
+# -incdir is this directory so `include "params.sv" resolves here.
+cmd=(xrun -64bit -access +r -svseed random -clean -top mac_tb -incdir "$HERE"
     "$ROOT/rtl/part1/mac.sv"
     "$ROOT/rtl/part1/mac_pipe.sv"
     "$ROOT/tb/part1/mac_tb.sv"
