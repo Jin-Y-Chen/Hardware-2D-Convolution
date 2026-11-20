@@ -1,0 +1,190 @@
+#
+# Mnemonic Maps
+#
+mmap new  -reuse -name {Boolean as Logic} -radix %b -contents {{%c=FALSE -edgepriority 1 -shape low}
+{%c=TRUE -edgepriority 1 -shape high}}
+mmap new  -reuse -name {Example Map} -radix %x -contents {{%b=11???? -bgcolor orange -label REG:%x -linecolor yellow -shape bus}
+{%x=1F -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=2C -bgcolor red -label ERROR -linecolor white -shape EVENT}
+{%x=* -label %x -linecolor gray -shape bus}}
+
+array unset createdGroup
+array set createdGroup {}
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.INPUT_TREADY}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.C}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.R}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.K}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.ACCW}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.INPUT_TDATA[9:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.INPUT_TUSER[10:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.INPUT_TREADY}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.INPUT_TVALID}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.axis_in.state[1:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.B[9:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.Q[6:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.S[2:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.reset}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.clk}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.input_loaded}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.compute_finished}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.stall_bar}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.en}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.w_ptr.inc_en}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.state[1:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.next_state[1:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.move_window[1:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.set_X_addr}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.reset_X_addr}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.reset_W_addr}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.delta_R[10:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.next_R_ptr[8:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.this_slice[6:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.next_slice[6:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.this_array[6:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.next_array[6:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.memory_fetched}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.W_read_addr[3:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.W_next_addr[3:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.mac_unit.input0[9:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.mac_unit.input1[9:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.X_read_addr[6:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.X_next_addr[6:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.mac_unit.init_value[9:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.init_acc}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.FSM_ctrl.valid_read}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.W_data[9:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.X_data[9:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.mac_unit.product[19:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.mac_unit.accum[23:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.mac_unit.post_accum[23:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.out[9:0]}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.OUTPUT_TDATA[9:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.OUTPUT_TREADY}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.dut.OUTPUT_TVALID}]}
+	} ]]
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.which_element_out[31:0]}]}
+	} ]]
+waveform format $id -radix %d
+set id [waveform add -signals [subst  {
+	{[format {Conv_tb.errors}]}
+	} ]]
+
+waveform xview limits 699453ns 699604ns
